@@ -130,6 +130,50 @@ t.check(
   concurrent.map((r) => r.payload?.company?.slug).join(", "),
 );
 
+// --- BUG: register returned no `profiles` key, crashing the client ---
+// Every endpoint that answers with a session must return the same shape. The
+// client treats `profiles` as an array on every render, so one endpoint
+// omitting it blanked the page immediately after signup.
+const shapes = new ApiClient();
+const registerBody = await shapes.call<SessionResponse>("POST", "/auth/register", {
+  email: uniqueEmail("shape"),
+  password: "supersecret123",
+});
+t.check(
+  "register returns a full session shape",
+  Array.isArray(registerBody.payload.profiles) &&
+    "user" in registerBody.payload &&
+    "company" in registerBody.payload,
+  JSON.stringify(Object.keys(registerBody.payload)),
+);
+t.check(
+  "register reports no company yet",
+  registerBody.payload.company === null,
+  String(registerBody.payload.company),
+);
+
+const companyBody = await shapes.call<SessionResponse>("POST", "/auth/company", {
+  name: "Shape Co",
+});
+t.check(
+  "company creation returns the same shape",
+  Array.isArray(companyBody.payload.profiles) && companyBody.payload.profiles.length === 1,
+  JSON.stringify(Object.keys(companyBody.payload)),
+);
+
+const sessionBody = await shapes.call<SessionResponse>("GET", "/auth/session");
+t.check(
+  "GET session returns the same shape",
+  Array.isArray(sessionBody.payload.profiles),
+  JSON.stringify(Object.keys(sessionBody.payload)),
+);
+
+const loginBody = await new ApiClient().call<SessionResponse>("POST", "/auth/login", {
+  email: "nobody@example.com",
+  password: "wrongpassword",
+});
+t.check("login with bad credentials is rejected", loginBody.status === 401, loginBody.status);
+
 // --- the server must still be alive after all of the above ---
 const health = await api.call<{ ok: boolean }>("GET", "/health");
 t.check("server is still running", health.payload?.ok === true);

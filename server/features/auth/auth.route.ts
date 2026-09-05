@@ -27,7 +27,10 @@ authRouter.post(
   asyncRoute(async (req, res) => {
     const { user, token } = await logic.register(req.body);
     setSessionCookie(res, token);
-    res.status(201).json({ user: { id: user.id, email: user.email }, company: null });
+    // getSession rather than a hand-built object: this endpoint returns a
+    // SessionResponse, and assembling one by hand meant `profiles` was
+    // missing, which crashed the client the moment it read it.
+    res.status(201).json(await logic.getSession(user.id));
   }),
 );
 

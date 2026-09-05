@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import * as authApi from "../data/authApi";
+import type { SessionResponse } from "@shared/api";
 import type { Company, Profile, User, Uuid } from "@shared/domain";
 
 /**
@@ -58,13 +59,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     () => localStorage.getItem(ACTIVE_PROFILE_KEY) as Uuid | null,
   );
 
+  /**
+   * Normalises a session payload before it reaches state.
+   *
+   * Every consumer treats `profiles` as an array, so one endpoint omitting it
+   * would crash the whole app on the next render. Coercing here means a
+   * partial or malformed response degrades instead.
+   */
+  const applySession = useCallback((next: SessionResponse) => {
+    setSession({
+      user: next.user ?? null,
+      company: next.company ?? null,
+      profiles: next.profiles ?? [],
+    });
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
     authApi
       .fetchSession()
       .then((data) => {
-        if (!cancelled) setSession(data);
+        if (!cancelled) applySession(data);
       })
       // A 401 here is the normal signed-out case, not an error worth showing.
       .catch(() => {})
@@ -75,23 +91,32 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [applySession]);
 
   const refresh = useCallback(async () => {
-    setSession(await authApi.fetchSession());
-  }, []);
+    applySession(await authApi.fetchSession());
+  }, [applySession]);
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    setSession(await authApi.login(email, password));
-  }, []);
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      applySession(await authApi.login(email, password));
+    },
+    [applySession],
+  );
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    setSession(await authApi.register(email, password));
-  }, []);
+  const signUp = useCallback(
+    async (email: string, password: string) => {
+      applySession(await authApi.register(email, password));
+    },
+    [applySession],
+  );
 
-  const nameCompany = useCallback(async (name: string) => {
-    setSession(await authApi.createCompany(name));
-  }, []);
+  const nameCompany = useCallback(
+    async (name: string) => {
+      applySession(await authApi.createCompany(name));
+    },
+    [applySession],
+  );
 
   const signOut = useCallback(async () => {
     await authApi.logout();
@@ -108,10 +133,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   /**
    * Falls back to the default profile when the stored id is stale -- the
    * profile was deleted, or this is a different account on the same browser.
+   *
+   * Defensive about `profiles` being absent: an endpoint that returns a
+   * partial session should degrade to "no active profile", not crash the app
+   * into a blank page.
    */
   const activeProfile = useMemo(() => {
-    const stored = session.profiles.find((profile) => profile.id === activeId);
-    return stored ?? session.profiles.find((p) => p.is_default) ?? session.profiles[0];
+    const profiles = session.profiles ?? [];
+    const stored = profiles.find((profile) => profile.id === activeId);
+    return stored ?? profiles.find((p) => p.is_default) ?? profiles[0];
   }, [session.profiles, activeId]);
 
   const value = useMemo<SessionContextValue>(
