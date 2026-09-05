@@ -126,3 +126,12 @@ export interface LogSummaryResponse {
 export interface CatalogResponse {
   catalog: CatalogEntry[];
 }
+
+/* ── github ────────────────────────────────────────────────────────────── */
+
+/** Social proof for the navbar. Counts are null when GitHub is unreachable. */
+export interface RepoStatsResponse {
+  stars: number | null;
+  forks: number | null;
+  html_url: string;
+}

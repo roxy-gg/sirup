@@ -5,6 +5,7 @@ import { mcpServersRouter } from "../features/mcp-servers/mcpServers.route.js";
 import { mcpLogsRouter } from "../features/mcp-logs/mcpLogs.route.js";
 import { mcpCatalogRouter } from "../features/mcp-catalog/mcpCatalog.route.js";
 import { publicCatalog } from "../features/mcp-catalog/mcpCatalog.logic.js";
+import { getRepoStats } from "../features/github/github.data.js";
 import { notFoundHandler } from "../middleware/errorHandler.js";
 
 /**
@@ -22,6 +23,16 @@ apiRouter.get("/health", (_req, res) => {
 // `connected` flags -- just what a signed-out visitor may see.
 apiRouter.get("/public/apps", (_req, res) => {
   res.json({ catalog: publicCatalog() });
+});
+
+// Public: the star count in the navbar. Cached upstream in github.data.ts, so
+// this handler is free -- but the browser gets a short cache header too, so a
+// visitor moving between pages doesn't re-ask on every mount.
+apiRouter.get("/public/github", (_req, res) => {
+  void getRepoStats().then((stats) => {
+    res.setHeader("Cache-Control", "public, max-age=300");
+    res.json(stats);
+  });
 });
 
 apiRouter.use("/auth", authRouter);

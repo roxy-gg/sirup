@@ -25,12 +25,36 @@ export function Logo({ className }: { className?: string }) {
   );
 }
 
-/** The mark plus the wordmark, as used in the sidebar and onboarding header. */
-export function Wordmark({ className }: { className?: string }) {
+/**
+ * The mark plus the wordmark.
+ *
+ * Two sizes, because the wordmark does two different jobs. In the sidebar it is
+ * a label on a dense column of controls and should not shout, so it stays at
+ * 20px/13px. In the marketing navbar it is the first thing on the page and the
+ * only branding above the fold, so it steps up to 26px/15px -- the same numbers
+ * roxy.gg's nav uses, which is what makes the two headers read as one family
+ * rather than two teams.
+ */
+export function Wordmark({
+  className,
+  size = "sm",
+}: {
+  className?: string;
+  size?: "sm" | "lg";
+}) {
+  const large = size === "lg";
+
   return (
-    <span className={cn("flex items-center gap-1.5", className)}>
-      <Logo />
-      <span className="text-sm font-semibold tracking-tight">sirup.gg</span>
+    <span className={cn("flex items-center", large ? "gap-2" : "gap-1.5", className)}>
+      <Logo className={cn("s-mark", large && "size-[26px] rounded-lg")} />
+      <span
+        className={cn(
+          "font-semibold tracking-tight",
+          large ? "text-[15px]" : "text-sm",
+        )}
+      >
+        sirup.gg
+      </span>
     </span>
   );
 }
