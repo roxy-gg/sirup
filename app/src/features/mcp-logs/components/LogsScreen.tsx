@@ -95,7 +95,10 @@ export function LogsScreen() {
         </Empty>
       ) : (
         <div className="flex flex-col gap-3">
-          <Card className="overflow-hidden py-0">
+          {/* gap-0: Card is a flex column with gap-6, and py-0 removes the
+              padding but not the gap -- which showed up as a 24px void
+              between the header row and the first log line. */}
+          <Card className="gap-0 overflow-hidden py-0">
             {/* Shares LOG_GRID with the rows, so headings and values cannot
                 drift apart when a column width changes. */}
             <div
