@@ -98,6 +98,29 @@ t.check(
   /--border-translucent-strong:\s*#(?:ffffff|000000)14/.test(css),
 );
 
+// --- tailwind-merge must know our custom font sizes ---
+// Without this it files `text-small` in the same conflict group as
+// `text-primary-foreground` and drops the colour, which rendered the hero CTA
+// as white text on a white button. Silent: no build error, no console warning.
+const utils = fs.readFileSync("app/src/lib/utils.ts", "utf8");
+t.check(
+  "cn() teaches tailwind-merge our type scale",
+  utils.includes("extendTailwindMerge") && utils.includes("font-size"),
+);
+
+// Only the `--text-<name>` tokens that declare a size. `--text-secondary` and
+// friends are colours that happen to share the prefix.
+const themeSizes = [...source.matchAll(/--text-([a-z]+):\s*[\d.]+rem/g)].map((m) => m[1]!);
+const declaredSizes = [...utils.matchAll(/"([a-z]+)"/g)].map((m) => m[1]!);
+const unregistered = [...new Set(themeSizes)].filter(
+  (size) => !declaredSizes.includes(size) && !/^(xs|sm|base|lg|xl|\dxl)$/.test(size),
+);
+t.check(
+  "every custom font size is registered with tailwind-merge",
+  unregistered.length === 0,
+  unregistered.join(", ") || `${new Set(themeSizes).size} sizes`,
+);
+
 // --- drop shadows should be gone from everything except overlays ---
 const shadowUtilities = [...source.matchAll(/shadow-(?:sm|md|lg|xl|2xl)\b/g)];
 t.check(

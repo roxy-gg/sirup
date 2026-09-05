@@ -18,7 +18,7 @@ export function LandingScreen() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-6 py-5">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
         <Wordmark />
         <div className="flex items-center gap-1">
           <ThemeToggle />
@@ -28,37 +28,36 @@ export function LandingScreen() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-20 px-6 pb-24">
-        {/* ── Hero ─────────────────────────────────────────────────────── */}
-        <section className="flex flex-col items-center gap-7 pt-12 text-center sm:pt-20">
-          <h1 className="max-w-2xl text-3xl font-semibold tracking-tight text-balance">
-            A single endpoint for all your MCP servers
-          </h1>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-20 px-6 pb-24">
+        {/* ── Hero: copy left, diagram right ───────────────────────────── */}
+        <section className="grid items-center gap-10 pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:pt-16">
+          <div className="flex flex-col items-start gap-6">
+            <h1 className="text-3xl font-semibold tracking-tight text-balance">
+              A single endpoint for all your MCP servers
+            </h1>
 
-          <p className="max-w-xl text-base text-pretty text-text-tertiary">
-            Connect your tools once. Every AI client you use — Claude Code,
-            Cursor, Codex — points at one URL and sees all of them. Add a server
-            later and they pick it up without a config change.
-          </p>
+            <p className="max-w-lg text-base text-pretty text-text-tertiary">
+              Connect your tools once. Every AI client you use — Claude Code,
+              Cursor, Codex — points at one URL and sees all of them. Add a
+              server later and they pick it up without a config change.
+            </p>
 
-          <div className="flex flex-col items-center gap-3">
-            <Button size="lg" asChild>
-              <Link to="/start">Get started — it&rsquo;s free</Link>
-            </Button>
-            <span className="text-mini text-text-quaternary">
-              No credit card. Open source.
-            </span>
+            <div className="flex flex-col items-start gap-3">
+              <Button size="lg" asChild>
+                <Link to="/start">Get started — it&rsquo;s free</Link>
+              </Button>
+              <span className="text-mini text-text-quaternary">
+                No credit card. Open source.
+              </span>
+            </div>
           </div>
-        </section>
 
-        {/* ── The diagram ──────────────────────────────────────────────── */}
-        <section className="flex justify-center">
-          {/* Below md the bracket layout has nowhere to go, so the mobile
+          {/* Below lg the bracket layout has nowhere to go, so the mobile
               version states the same thing in words. */}
-          <div className="hidden md:block">
+          <div className="hidden justify-self-center lg:block">
             <GatewayDiagram apps={visible} endpoint={endpoint} />
           </div>
-          <p className="max-w-sm text-center text-sm text-text-tertiary md:hidden">
+          <p className="max-w-sm text-sm text-text-tertiary lg:hidden">
             Your editors connect to <code className="font-mono">sirup.gg/mcp</code>.
             sirup connects to everything else.
           </p>
@@ -120,7 +119,7 @@ export function LandingScreen() {
         </section>
       </main>
 
-      <footer className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 border-t px-6 py-6">
+      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 border-t px-6 py-6">
         <span className="text-mini text-text-quaternary">
           sirup.gg — MIT licensed
         </span>
