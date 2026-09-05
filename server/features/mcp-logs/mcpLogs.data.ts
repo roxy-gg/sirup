@@ -19,9 +19,9 @@ export interface ListLogsOptions {
   status?: "ok" | "error";
 }
 
-export function listLogs(companyId: Uuid, options: ListLogsOptions) {
+export function listLogs(userId: Uuid, options: ListLogsOptions) {
   const query = McpLogModel.query()
-    .where("mcp_logs.company_id", companyId)
+    .where("mcp_logs.user_id", userId)
     .leftJoinRelated("server")
     .select("mcp_logs.*", "server.name as server_name", "server.slug as server_slug")
     // Must match mcp_logs_company_created_idx for the keyset scan to use it.
@@ -52,11 +52,11 @@ export function listLogs(companyId: Uuid, options: ListLogsOptions) {
 
 /** Rollup for the logs header: calls and error rate over a recent window. */
 export async function summarize(
-  companyId: Uuid,
+  userId: Uuid,
   sinceIso: string,
 ): Promise<LogSummary> {
   const rows = (await McpLogModel.query()
-    .where("company_id", companyId)
+    .where("user_id", userId)
     .where("created_at", ">=", sinceIso)
     .select("status")
     .count("* as count")

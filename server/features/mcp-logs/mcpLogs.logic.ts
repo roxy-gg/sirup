@@ -44,7 +44,7 @@ function decodeCursor(raw: string | undefined): data.KeysetCursor | null {
 }
 
 export async function list(
-  companyId: Uuid,
+  userId: Uuid,
   rawQuery: unknown,
 ): Promise<LogListResponse> {
   const {
@@ -54,7 +54,7 @@ export async function list(
     status,
   } = querySchema.parse(rawQuery);
 
-  const logs = await data.listLogs(companyId, {
+  const logs = await data.listLogs(userId, {
     limit,
     cursor: decodeCursor(rawCursor),
     ...(serverId ? { serverId } : {}),
@@ -70,7 +70,7 @@ export async function list(
   };
 }
 
-export function summary(companyId: Uuid, hours = 24): Promise<LogSummary> {
+export function summary(userId: Uuid, hours = 24): Promise<LogSummary> {
   const since = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-  return data.summarize(companyId, since);
+  return data.summarize(userId, since);
 }

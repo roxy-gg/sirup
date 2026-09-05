@@ -59,13 +59,13 @@ function assertServerId(serverId: string): asserts serverId is Uuid {
   if (!isUuid(serverId)) throw ApiError.notFound("Server not found.");
 }
 
-export function list(companyId: Uuid) {
-  return data.listServers(companyId);
+export function list(userId: Uuid) {
+  return data.listServers(userId);
 }
 
-export async function get(companyId: Uuid, serverId: string) {
+export async function get(userId: Uuid, serverId: string) {
   assertServerId(serverId);
-  const server = await data.findServerWithTools(companyId, serverId);
+  const server = await data.findServerWithTools(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
   return server;
 }
@@ -75,16 +75,22 @@ export async function get(companyId: Uuid, serverId: string) {
  * server that is temporarily down still appears in the UI in an error state
  * with a Retry action -- rather than silently failing to save.
  */
-export async function create(companyId: Uuid, payload: unknown) {
+export async function create(
+  scope: { userId: Uuid; companyId: Uuid },
+  payload: unknown,
+) {
   const input = createSchema.parse(payload);
   assertAuthShape(input);
 
-  const existing = await data.listSlugs(companyId);
+  const existing = await data.listSlugs(scope.userId);
   const taken = new Set(existing.map((row) => row.slug));
   const slug = uniqueSlug(slugify(input.name), taken);
 
   const server = await data.insertServer({
-    company_id: companyId,
+    // user_id is the access scope; company_id rides along for reporting and
+    // never grants anyone else a read path.
+    user_id: scope.userId,
+    company_id: scope.companyId,
     name: input.name,
     slug,
     url: input.url,
@@ -96,13 +102,13 @@ export async function create(companyId: Uuid, payload: unknown) {
 
   await tryRefresh(server);
 
-  return data.findServerWithTools(companyId, server.id);
+  return data.findServerWithTools(scope.userId, server.id);
 }
 
-export async function update(companyId: Uuid, serverId: string, payload: unknown) {
+export async function update(userId: Uuid, serverId: string, payload: unknown) {
   assertServerId(serverId);
   const input = updateSchema.parse(payload);
-  const server = await data.findServer(companyId, serverId);
+  const server = await data.findServer(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
 
   const patch: Partial<McpServerModel> = {};
@@ -133,7 +139,7 @@ export async function update(companyId: Uuid, serverId: string, payload: unknown
     assertAuthShape({ ...server, ...patch } as AuthShape);
   }
 
-  const updated = await data.patchServer(companyId, serverId, patch);
+  const updated = await data.patchServer(userId, serverId, patch);
 
   // Credentials or URL may have changed; the pooled connection is now stale.
   // The pool is keyed by the uuid string exactly as stored, so no coercion.
@@ -145,22 +151,22 @@ export async function update(companyId: Uuid, serverId: string, payload: unknown
     await tryRefresh(updated);
   }
 
-  return data.findServerWithTools(companyId, serverId);
+  return data.findServerWithTools(userId, serverId);
 }
 
-export async function remove(companyId: Uuid, serverId: string): Promise<void> {
+export async function remove(userId: Uuid, serverId: string): Promise<void> {
   assertServerId(serverId);
-  const server = await data.findServer(companyId, serverId);
+  const server = await data.findServer(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
 
   release(serverId);
-  await data.deleteServer(companyId, serverId);
+  await data.deleteServer(userId, serverId);
 }
 
 /** Manual "Retry" from the UI -- surfaces the failure instead of swallowing it. */
-export async function refresh(companyId: Uuid, serverId: string) {
+export async function refresh(userId: Uuid, serverId: string) {
   assertServerId(serverId);
-  const server = await data.findServer(companyId, serverId);
+  const server = await data.findServer(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
 
   try {
@@ -170,11 +176,11 @@ export async function refresh(companyId: Uuid, serverId: string) {
     throw ApiError.badRequest(`Could not reach that MCP server: ${message}`);
   }
 
-  return data.findServerWithTools(companyId, serverId);
+  return data.findServerWithTools(userId, serverId);
 }
 
 export async function setToolEnabled(
-  companyId: Uuid,
+  userId: Uuid,
   serverId: string,
   toolId: string,
   enabled: unknown,
@@ -182,7 +188,7 @@ export async function setToolEnabled(
   assertServerId(serverId);
   if (!isUuid(toolId)) throw ApiError.notFound("Tool not found.");
 
-  const server = await data.findServer(companyId, serverId);
+  const server = await data.findServer(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
 
   const tool = await data.patchTool(serverId, toolId, { enabled: Boolean(enabled) });

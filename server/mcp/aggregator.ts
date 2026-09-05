@@ -22,6 +22,8 @@ export function namespaceToolName(slug: string, toolName: string): string {
 }
 
 interface LogEntry {
+  /** The owner. Activity is private to the person who made it. */
+  user_id: Uuid;
   company_id: Uuid;
   profile_id?: Uuid | null;
   server_id?: Uuid | null;
@@ -97,6 +99,7 @@ export async function refreshServerTools(
     });
 
     await recordLog({
+      user_id: server.user_id,
       company_id: server.company_id,
       server_id: server.id,
       method: "refresh",
@@ -117,6 +120,7 @@ export async function refreshServerTools(
     });
 
     await recordLog({
+      user_id: server.user_id,
       company_id: server.company_id,
       server_id: server.id,
       method: "refresh",
@@ -210,7 +214,7 @@ export async function resolveTool(
  * and log the outcome against both the company and the profile.
  */
 export async function callAggregatedTool(
-  scope: { companyId: Uuid; profileId: Uuid },
+  scope: { userId: Uuid; companyId: Uuid; profileId: Uuid },
   namespacedName: string,
   args: Record<string, unknown> | undefined,
 ) {
@@ -219,6 +223,7 @@ export async function callAggregatedTool(
 
   if (!resolved) {
     await recordLog({
+      user_id: scope.userId,
       company_id: scope.companyId,
       profile_id: scope.profileId,
       method: "tools/call",
@@ -237,6 +242,7 @@ export async function callAggregatedTool(
     const result = await callUpstreamTool(client, toolName, args);
 
     await recordLog({
+      user_id: scope.userId,
       company_id: scope.companyId,
       profile_id: scope.profileId,
       server_id: server.id,
@@ -252,6 +258,7 @@ export async function callAggregatedTool(
     release(server.id);
 
     await recordLog({
+      user_id: scope.userId,
       company_id: scope.companyId,
       profile_id: scope.profileId,
       server_id: server.id,

@@ -6,11 +6,16 @@ import { UserModel } from "../database/models/index.js";
 import type { Uuid } from "../../shared/domain.js";
 
 /**
- * Request augmented by the auth middleware. Declared once so every route can
- * rely on `req.user` and `req.companyId` being present after the guards run.
+ * Request augmented by the auth middleware.
+ *
+ * `userId` is the authorisation scope for everything a person owns:
+ * connections, profiles, logs. `companyId` is carried alongside for grouping
+ * and reporting, but it never grants access on its own -- two people in the
+ * same company cannot see each other's connected accounts.
  */
 export interface AuthedRequest extends Request {
   user?: UserModel;
+  userId?: Uuid;
   companyId?: Uuid;
 }
 
@@ -32,14 +37,15 @@ export const requireAuth = asyncRoute(
     if (!user) return next(ApiError.unauthorized());
 
     req.user = user;
+    req.userId = user.id;
     return next();
   },
 );
 
 /**
- * Most endpoints operate on a company's resources, so they need onboarding to
- * be finished. Kept separate from requireAuth so the company-creation endpoint
- * can authenticate without one.
+ * Most endpoints operate on resources that only exist once onboarding is
+ * finished, so they need a company. The company is not the access scope --
+ * see requireContext -- it just marks the account as set up.
  */
 export function requireCompany(
   req: AuthedRequest,
@@ -55,13 +61,16 @@ export function requireCompany(
 }
 
 /**
- * Narrows a request that has passed both guards. Routes call this instead of
- * repeating non-null assertions on every handler.
+ * Narrows a request that has passed both guards.
+ *
+ * Returns `userId` first because that is what every query scopes on. Routes
+ * call this instead of repeating non-null assertions on every handler.
  */
 export function requireContext(req: AuthedRequest): {
   user: UserModel;
+  userId: Uuid;
   companyId: Uuid;
 } {
-  if (!req.user || !req.companyId) throw ApiError.unauthorized();
-  return { user: req.user, companyId: req.companyId };
+  if (!req.user || !req.userId || !req.companyId) throw ApiError.unauthorized();
+  return { user: req.user, userId: req.userId, companyId: req.companyId };
 }

@@ -39,20 +39,19 @@ function indexNames(plan: string): string {
   return [...plan.matchAll(/"Index Name":"([^"]+)"/g)].map((m) => m[1]).join(", ");
 }
 
-const { rows: companies } = await client.query<{ id: string }>(
-  "SELECT id FROM companies LIMIT 1",
-);
-const { rows: servers } = await client.query<{ id: string }>(
-  "SELECT id FROM mcp_servers LIMIT 1",
+// A real connection, and the user who owns it -- every scoped query below
+// filters on the owner, so sampling them together keeps the plans realistic.
+const { rows: servers } = await client.query<{ id: string; user_id: string }>(
+  "SELECT id, user_id FROM mcp_servers LIMIT 1",
 );
 
-if (companies.length === 0 || servers.length === 0) {
+if (servers.length === 0) {
   console.log("No data to plan against. Run the smoke test first.");
   process.exit(1);
 }
 
-const companyId = companies[0]!.id;
 const serverId = servers[0]!.id;
+const ownerId = servers[0]!.user_id;
 
 // ── Log indexes, at a size where an index is genuinely the better plan ────
 //
@@ -65,41 +64,46 @@ const { rows: scratch } = await client.query<{ id: string }>(
    VALUES ('Index Probe', 'index-probe-' || gen_random_uuid())
    RETURNING id`,
 );
-const probeId = scratch[0]!.id;
+const probeCompanyId = scratch[0]!.id;
+
+// Logs are user-owned, so the probe needs an owner and several siblings to
+// scope against.
+const { rows: owners } = await client.query<{ id: string }>(
+  `INSERT INTO users (email, password_hash, company_id)
+   SELECT 'index-probe-' || gen_random_uuid() || '@example.com', 'x', $1
+   FROM generate_series(1, 10) AS i
+   RETURNING id`,
+  [probeCompanyId],
+);
+const probeId = owners[0]!.id;
+const siblings = owners.slice(1);
 
 // Spread over 30 days rather than 20k rows inside one hour. That shape is
 // realistic and, importantly, makes the 24h window *selective* -- with every
 // row inside the window a sequential scan is genuinely the right plan, and
 // the check would be asserting something false.
 //
-// Rows are split across several companies for the same reason: if one company
-// owns ~all of the table, filtering by it is not selective either, and the
+// Rows are split across several users for the same reason: if one user owns
+// ~all of the table, filtering by them is not selective either, and the
 // planner correctly seq-scans no matter how good the index is.
-const { rows: siblings } = await client.query<{ id: string }>(
-  `INSERT INTO companies (name, slug)
-   SELECT 'Index Sibling ' || i, 'index-sibling-' || gen_random_uuid()
-   FROM generate_series(1, 9) AS i
-   RETURNING id`,
-);
-
 await client.query(
-  `INSERT INTO mcp_logs (company_id, method, status, duration_ms, created_at)
-   SELECT $1,
+  `INSERT INTO mcp_logs (user_id, company_id, method, status, duration_ms, created_at)
+   SELECT $1, $2,
           'tools/call',
           CASE WHEN i % 7 = 0 THEN 'error' ELSE 'ok' END,
           i % 500,
           now() - (i || ' minutes')::interval
    FROM generate_series(1, 43200) AS i`,
-  [probeId],
+  [probeId, probeCompanyId],
 );
 
-// Nine more companies of the same size, so the probe is ~10% of the table.
+// Nine more users of the same size, so the probe is ~10% of the table.
 for (const sibling of siblings) {
   await client.query(
-    `INSERT INTO mcp_logs (company_id, method, status, created_at)
-     SELECT $1, 'tools/call', 'ok', now() - (i || ' minutes')::interval
+    `INSERT INTO mcp_logs (user_id, company_id, method, status, created_at)
+     SELECT $1, $2, 'tools/call', 'ok', now() - (i || ' minutes')::interval
      FROM generate_series(1, 43200) AS i`,
-    [sibling.id],
+    [sibling.id, probeCompanyId],
   );
 }
 
@@ -107,7 +111,7 @@ await client.query("ANALYZE mcp_logs");
 
 const keysetPlan = await planFor(
   `SELECT * FROM mcp_logs
-   WHERE company_id = $1 AND (created_at, id) < (now(), '00000000-0000-0000-0000-000000000000')
+   WHERE user_id = $1 AND (created_at, id) < (now(), '00000000-0000-0000-0000-000000000000')
    ORDER BY created_at DESC, id DESC LIMIT 50`,
   [probeId],
 );
@@ -119,7 +123,7 @@ t.check(
 
 const summaryPlan = await planFor(
   `SELECT status, count(*) FROM mcp_logs
-   WHERE company_id = $1 AND created_at >= now() - interval '24 hours'
+   WHERE user_id = $1 AND created_at >= now() - interval '24 hours'
    GROUP BY status`,
   [probeId],
 );
@@ -131,7 +135,7 @@ t.check(
 
 const perServerPlan = await planFor(
   `SELECT * FROM mcp_logs
-   WHERE company_id = $1 AND server_id = $2
+   WHERE user_id = $1 AND server_id = $2
    ORDER BY created_at DESC, id DESC LIMIT 50`,
   [probeId, serverId],
 );
@@ -164,8 +168,8 @@ const toolsListPlan = await planFor(
 t.check("tools/list uses an index", usesIndex(toolsListPlan), indexNames(toolsListPlan));
 
 const serversPlan = await planFor(
-  "SELECT * FROM mcp_servers WHERE company_id = $1 ORDER BY created_at DESC",
-  [companyId],
+  "SELECT * FROM mcp_servers WHERE user_id = $1 ORDER BY created_at DESC",
+  [ownerId],
 );
 t.check("server list uses an index", usesIndex(serversPlan), indexNames(serversPlan));
 

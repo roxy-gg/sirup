@@ -74,6 +74,7 @@ async function authenticateGateway(
     }
 
     req.scope = {
+      userId: profile.user_id,
       companyId: profile.company_id,
       profileId: profile.id,
       profileName: profile.name,

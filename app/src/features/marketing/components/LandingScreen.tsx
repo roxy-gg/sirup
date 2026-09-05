@@ -66,9 +66,9 @@ export function LandingScreen() {
         {/* ── What it actually does ────────────────────────────────────── */}
         <section className="grid gap-8 sm:grid-cols-3">
           <Point title="One connection to manage">
-            Your team configures a server once, here. Nobody pastes an API key
-            into their editor again, and revoking access is one click rather
-            than a message asking everyone to update their config.
+            Configure a server once, here. You never paste an API key into an
+            editor again, and revoking access is one click rather than hunting
+            through every client config you set up.
           </Point>
           <Point title="Pick what agents can do">
             Connecting reads the server&rsquo;s real tool list, then you choose

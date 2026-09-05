@@ -82,7 +82,7 @@ export function CreateProfileDialog({
           <DialogTitle>New profile</DialogTitle>
           <DialogDescription>
             A profile gets its own gateway token and exposes only the
-            connections you pick.
+            connections you pick. Profiles are private to your account.
           </DialogDescription>
         </DialogHeader>
 
@@ -98,7 +98,8 @@ export function CreateProfileDialog({
               required
             />
             <FieldDescription>
-              Something your team will recognise in a client config.
+              Only you can see this. Name it something you&rsquo;ll recognise in
+              a client config.
             </FieldDescription>
           </Field>
 

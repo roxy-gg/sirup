@@ -7,7 +7,11 @@
  * Usage: npm run check:timestamps
  */
 import { knex } from "../server/database/knex.js";
-import { CompanyModel, McpLogModel } from "../server/database/models/index.js";
+import {
+  CompanyModel,
+  McpLogModel,
+  UserModel,
+} from "../server/database/models/index.js";
 import { Checks } from "./_harness.js";
 
 const t = new Checks("Timestamps");
@@ -53,8 +57,17 @@ t.check(
 );
 
 // --- log inserts must be monotonic, since the cursor orders on them ---
+// Logs are user-owned, so the row needs an owner. A throwaway user keeps this
+// self-contained and lets the company cascade clean both up.
+const owner = await UserModel.query().insert({
+  email: `ts-${Date.now()}@example.com`,
+  password_hash: "not-a-real-hash",
+  company_id: company.id,
+});
+
 for (let i = 0; i < 5; i += 1) {
   await McpLogModel.query().insert({
+    user_id: owner.id,
     company_id: company.id,
     method: "tools/list",
     status: "ok",
@@ -63,7 +76,7 @@ for (let i = 0; i < 5; i += 1) {
 }
 
 const readBack = await McpLogModel.query()
-  .where("company_id", company.id)
+  .where("user_id", owner.id)
   .orderBy([
     { column: "created_at", order: "asc" },
     { column: "id", order: "asc" },

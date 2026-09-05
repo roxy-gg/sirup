@@ -12,6 +12,8 @@ import type { Uuid } from "../../shared/domain.js";
 
 /** Which profile — and therefore which company — a request belongs to. */
 export interface GatewayScope {
+  /** The owner. Every query and every log row scopes on this. */
+  userId: Uuid;
   companyId: Uuid;
   profileId: Uuid;
   profileName: string;
@@ -40,6 +42,7 @@ export function createGatewayServer(scope: GatewayScope): Server {
     const tools = await listAggregatedTools(scope.profileId);
 
     await recordLog({
+      user_id: scope.userId,
       company_id: scope.companyId,
       profile_id: scope.profileId,
       method: "tools/list",

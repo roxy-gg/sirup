@@ -11,7 +11,10 @@ import { isUuid } from "../../shared/uuid.js";
 import { ApiError } from "../../shared/errors.js";
 
 /**
- * ROUTE -- full CRUD over profiles, plus their attachments.
+ * ROUTE -- full CRUD over the signed-in user's own profiles.
+ *
+ * Scoped on `userId`, like connections. Profiles carry gateway tokens, so a
+ * cross-user read here would hand someone else's credential over directly.
  */
 export const profilesRouter = express.Router();
 
@@ -21,8 +24,8 @@ profilesRouter.use(requireAuth, requireCompany);
 profilesRouter.get(
   "/",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    res.json({ profiles: await logic.list(companyId) });
+    const { userId } = requireContext(req);
+    res.json({ profiles: await logic.list(userId) });
   }),
 );
 
@@ -30,8 +33,8 @@ profilesRouter.get(
 profilesRouter.get(
   "/:id",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    res.json({ profile: await logic.get(companyId, String(req.params.id)) });
+    const { userId } = requireContext(req);
+    res.json({ profile: await logic.get(userId, String(req.params.id)) });
   }),
 );
 
@@ -39,11 +42,11 @@ profilesRouter.get(
 profilesRouter.get(
   "/:id/servers",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
+    const { userId } = requireContext(req);
     const id = String(req.params.id);
     if (!isUuid(id)) throw ApiError.notFound("Profile not found.");
-    // Confirms the profile belongs to this company before reading its links.
-    await logic.get(companyId, id);
+    // Confirms the profile belongs to this user before reading its links.
+    await logic.get(userId, id);
     res.json({ server_ids: await logic.attachedServerIds(id) });
   }),
 );
@@ -52,8 +55,9 @@ profilesRouter.get(
 profilesRouter.post(
   "/",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    res.status(201).json({ profile: await logic.create(companyId, req.body) });
+    const { userId, companyId } = requireContext(req);
+    const profile = await logic.create({ userId, companyId }, req.body);
+    res.status(201).json({ profile });
   }),
 );
 
@@ -61,8 +65,8 @@ profilesRouter.post(
 profilesRouter.patch(
   "/:id",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    const profile = await logic.update(companyId, String(req.params.id), req.body);
+    const { userId } = requireContext(req);
+    const profile = await logic.update(userId, String(req.params.id), req.body);
     res.json({ profile });
   }),
 );
@@ -71,13 +75,13 @@ profilesRouter.patch(
 profilesRouter.put(
   "/:id/servers",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
+    const { userId } = requireContext(req);
     const serverIds: unknown = req.body?.server_ids;
     if (!Array.isArray(serverIds)) {
       throw ApiError.badRequest("server_ids must be an array.");
     }
     const profile = await logic.setServers(
-      companyId,
+      userId,
       String(req.params.id),
       serverIds.map(String),
     );
@@ -89,8 +93,8 @@ profilesRouter.put(
 profilesRouter.delete(
   "/:id",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    await logic.remove(companyId, String(req.params.id));
+    const { userId } = requireContext(req);
+    await logic.remove(userId, String(req.params.id));
     res.status(204).end();
   }),
 );

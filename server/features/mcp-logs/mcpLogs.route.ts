@@ -19,8 +19,8 @@ mcpLogsRouter.use(requireAuth, requireCompany);
 mcpLogsRouter.get(
   "/",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    res.json(await logic.list(companyId, req.query));
+    const { userId } = requireContext(req);
+    res.json(await logic.list(userId, req.query));
   }),
 );
 
@@ -28,7 +28,7 @@ mcpLogsRouter.get(
 mcpLogsRouter.get(
   "/summary",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    res.json({ summary: await logic.summary(companyId) });
+    const { userId } = requireContext(req);
+    res.json({ summary: await logic.summary(userId) });
   }),
 );

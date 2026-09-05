@@ -6,9 +6,9 @@ import type { Uuid } from "../../../shared/domain.js";
  * DATA -- every Objection query for profiles and their attachments.
  */
 
-export function listProfiles(companyId: Uuid) {
+export function listProfiles(userId: Uuid) {
   return ProfileModel.query()
-    .where("company_id", companyId)
+    .where("user_id", userId)
     // Default first, then oldest: a stable order the switcher can rely on.
     .orderBy([
       { column: "is_default", order: "desc" },
@@ -16,20 +16,20 @@ export function listProfiles(companyId: Uuid) {
     ]);
 }
 
-export function findProfile(companyId: Uuid, profileId: Uuid) {
-  return ProfileModel.query().findById(profileId).where("company_id", companyId);
+export function findProfile(userId: Uuid, profileId: Uuid) {
+  return ProfileModel.query().findById(profileId).where("user_id", userId);
 }
 
 export function findProfileByToken(token: string) {
   return ProfileModel.query().findOne({ gateway_token: token });
 }
 
-export function findDefaultProfile(companyId: Uuid) {
-  return ProfileModel.query().findOne({ company_id: companyId, is_default: true });
+export function findDefaultProfile(userId: Uuid) {
+  return ProfileModel.query().findOne({ user_id: userId, is_default: true });
 }
 
-export function listSlugs(companyId: Uuid) {
-  return ProfileModel.query().where("company_id", companyId).select("slug");
+export function listSlugs(userId: Uuid) {
+  return ProfileModel.query().where("user_id", userId).select("slug");
 }
 
 export function insertProfile(values: Partial<ProfileModel>) {
@@ -37,27 +37,27 @@ export function insertProfile(values: Partial<ProfileModel>) {
 }
 
 export function patchProfile(
-  companyId: Uuid,
+  userId: Uuid,
   profileId: Uuid,
   values: Partial<ProfileModel>,
 ) {
   return ProfileModel.query()
     .patchAndFetchById(profileId, values)
-    .where("company_id", companyId);
+    .where("user_id", userId);
 }
 
-export function deleteProfile(companyId: Uuid, profileId: Uuid) {
+export function deleteProfile(userId: Uuid, profileId: Uuid) {
   return ProfileModel.query()
     .delete()
-    .where("company_id", companyId)
+    .where("user_id", userId)
     .where("id", profileId);
 }
 
 /** Clears any existing default, so the partial unique index cannot trip. */
-export function clearDefault(companyId: Uuid) {
+export function clearDefault(userId: Uuid) {
   return ProfileModel.query()
     .patch({ is_default: false })
-    .where("company_id", companyId)
+    .where("user_id", userId)
     .where("is_default", true);
 }
 
@@ -100,10 +100,10 @@ export async function detachServer(profileId: Uuid, serverId: Uuid): Promise<voi
 }
 
 /** Which profiles expose a given connection. Used to render the server list. */
-export function listProfileIdsByServer(companyId: Uuid) {
+export function listProfileIdsByServer(userId: Uuid) {
   return knex("profile_servers as ps")
     .join("profiles as p", "p.id", "ps.profile_id")
-    .where("p.company_id", companyId)
+    .where("p.user_id", userId)
     .select<Array<{ server_id: Uuid; profile_id: Uuid }>>(
       "ps.server_id",
       "ps.profile_id",
@@ -117,7 +117,7 @@ export function listProfileIdsByServer(companyId: Uuid) {
  * enabled servers, which is the number the sidebar should show.
  */
 export async function countsByProfile(
-  companyId: Uuid,
+  userId: Uuid,
 ): Promise<Map<Uuid, { servers: number; tools: number }>> {
   const rows = await knex("profiles as p")
     .leftJoin("profile_servers as ps", "ps.profile_id", "p.id")
@@ -129,7 +129,7 @@ export async function countsByProfile(
     .leftJoin("mcp_tools as t", function join() {
       this.on("t.server_id", "=", "s.id").andOn(knex.raw("t.enabled = true"));
     })
-    .where("p.company_id", companyId)
+    .where("p.user_id", userId)
     .groupBy("p.id")
     .select<Array<{ id: Uuid; servers: string; tools: string }>>(
       "p.id",

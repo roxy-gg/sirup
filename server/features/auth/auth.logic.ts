@@ -116,9 +116,9 @@ export async function createCompany(
     try {
       const company = await data.insertCompany({ name, slug });
 
-      // Every company needs at least one profile: it is what carries the
-      // gateway token, so without one there is no way to reach the gateway.
-      await createDefaultProfile(company.id);
+      // Every user needs at least one profile: it is what carries the gateway
+      // token, so without one there is no way to reach the gateway.
+      await createDefaultProfile({ userId: user.id, companyId: company.id });
       await data.attachUserToCompany(user.id, company.id);
       return company;
     } catch (error) {
@@ -155,6 +155,7 @@ export async function getSession(userId: Uuid): Promise<SessionResponse> {
     },
     // Profiles ship with the session because every screen needs them: the
     // switcher, the endpoint panel, and the connect flow all read from here.
-    profiles: await listProfiles(user.company.id),
+    // Scoped to the user -- a colleague's profiles are none of their business.
+    profiles: await listProfiles(user.id),
   };
 }

@@ -40,6 +40,7 @@ export class CompanyModel extends BaseModel {
  * profiles, and a profile holds many connections.
  */
 export class ProfileModel extends BaseModel {
+  user_id!: Uuid;
   company_id!: Uuid;
   name!: string;
   slug!: string;
@@ -105,6 +106,7 @@ export class UserModel extends BaseModel {
 }
 
 export class McpServerModel extends BaseModel {
+  user_id!: Uuid;
   company_id!: Uuid;
   name!: string;
   slug!: string;
@@ -188,6 +190,7 @@ export class McpToolModel extends BaseModel {
 }
 
 export class McpLogModel extends BaseModel {
+  user_id!: Uuid;
   company_id!: Uuid;
   server_id!: Uuid | null;
   profile_id!: Uuid | null;

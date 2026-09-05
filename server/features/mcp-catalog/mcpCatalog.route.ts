@@ -20,8 +20,8 @@ mcpCatalogRouter.use(requireAuth, requireCompany);
 mcpCatalogRouter.get(
   "/",
   asyncRoute(async (req: AuthedRequest, res) => {
-    const { companyId } = requireContext(req);
-    const servers = await listServers(companyId);
+    const { userId } = requireContext(req);
+    const servers = await listServers(userId);
     res.json({ catalog: logic.list(servers.map((server) => server.url)) });
   }),
 );
