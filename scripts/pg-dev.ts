@@ -29,6 +29,34 @@ const pg = new EmbeddedPostgres({
   onError: () => {},
 });
 
+/**
+ * A previous run killed with SIGKILL leaves the postgres process alive and
+ * holding the port, so the next start fails with an opaque `undefined`. Clear
+ * it first rather than making everyone debug it by hand.
+ */
+async function portIsBusy(): Promise<boolean> {
+  const net = await import("node:net");
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port: PORT, host: "127.0.0.1" });
+    socket.on("connect", () => {
+      socket.destroy();
+      resolve(true);
+    });
+    socket.on("error", () => resolve(false));
+    setTimeout(() => {
+      socket.destroy();
+      resolve(false);
+    }, 1000);
+  });
+}
+
+if (await portIsBusy()) {
+  console.log(`[pg] port ${PORT} already in use — reusing the running cluster.`);
+  console.log(`[pg] ready: postgres://sirup:sirup@localhost:${PORT}/sirup`);
+  // Stay alive so `npm run pg:dev` behaves the same either way.
+  await new Promise(() => {});
+}
+
 const isFresh = !fs.existsSync(dataDir);
 
 if (isFresh) {

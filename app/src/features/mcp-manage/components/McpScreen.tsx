@@ -19,7 +19,6 @@ import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpCatalog } from "@/features/mcp-discover/hooks/useMcpCatalog";
 import { AppGrid } from "@/features/mcp-discover/components/AppGrid";
 import { CopyField } from "@/features/onboarding/components/CopyField";
-import { GatewayDiagram, type HeroApp } from "./GatewayDiagram";
 import { ServerCard } from "./ServerCard";
 import { ConnectSheet } from "./ConnectSheet";
 import { setToolEnabled } from "../data/mcpServersApi";
@@ -45,19 +44,6 @@ export function McpScreen() {
 
   const catalog = useMcpCatalog(catalogKey);
   const endpoint = `${window.location.origin}/mcp`;
-
-  // The diagram shows what this company actually connected, falling back to a
-  // representative set while the list is empty.
-  const heroApps: HeroApp[] = servers.servers
-    .filter((server) => server.status === "connected")
-    .slice(0, 5)
-    .map((server) => ({
-      name: server.name,
-      icon:
-        catalog.catalog.find(
-          (entry) => entry.url && entry.url === server.url,
-        )?.icon ?? null,
-    }));
 
   function openSheet(app: CatalogEntry) {
     setSelected(app);
@@ -125,26 +111,19 @@ export function McpScreen() {
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      {/* ── Hero: the pitch, plus the credentials you need ─────────────── */}
-      <section className="theme-surface surface flex flex-col gap-6 rounded-2xl bg-card p-6">
+      {/* ── Your endpoint: the thing you came here to copy ─────────────── */}
+      <section className="surface flex flex-col gap-4 rounded-2xl bg-card p-6">
         <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight">
-            One endpoint for every app your agents use
-          </h1>
-          <p className="text-sm text-muted-foreground">
+          <h1 className="text-lg font-semibold tracking-tight">Your MCP endpoint</h1>
+          <p className="text-sm text-text-tertiary">
             {servers.totalTools} tool{servers.totalTools === 1 ? "" : "s"} from{" "}
-            {servers.servers.length} app{servers.servers.length === 1 ? "" : "s"},
-            served through a single URL. Connect another and every client picks it
-            up — no config changes.
+            {servers.servers.length} app{servers.servers.length === 1 ? "" : "s"}.
+            Point any MCP client here and it sees all of them.
           </p>
         </div>
 
-        <div className="hidden justify-center py-2 md:flex">
-          <GatewayDiagram apps={heroApps} endpoint={endpoint} />
-        </div>
-
         <div className="flex flex-col gap-2 sm:flex-row">
-          <CopyField label="Your endpoint" value={endpoint} className="flex-1" />
+          <CopyField label="Endpoint URL" value={endpoint} className="flex-1" />
           <CopyField
             label="Gateway token"
             value={company?.gateway_token ?? ""}

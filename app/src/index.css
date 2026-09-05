@@ -495,6 +495,24 @@
   to { stroke-dashoffset: 0; }
 }
 
+/* ── App swap — the logo wall rotating on the landing page ─────────────── */
+.t-app-swap {
+  animation: t-app-swap var(--duration-very-slow) var(--ease-smooth-out) backwards;
+}
+
+@keyframes t-app-swap {
+  from {
+    opacity: 0;
+    filter: blur(var(--blur-small));
+    transform: translateY(var(--distance-small));
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .t-stagger > *,
   .t-stagger.is-revealed > * {
@@ -520,5 +538,9 @@
   .t-success-check svg path {
     animation: none !important;
     stroke-dashoffset: 0 !important;
+  }
+
+  .t-app-swap {
+    animation: none !important;
   }
 }

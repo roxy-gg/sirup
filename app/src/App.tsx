@@ -4,29 +4,41 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/AppShell";
 import { ThemeProvider } from "@/features/theme/hooks/useTheme";
 import { SessionProvider, useSession } from "@/features/auth/hooks/useSession";
+import { LandingScreen } from "@/features/marketing/components/LandingScreen";
 import { OnboardingScreen } from "@/features/onboarding/components/OnboardingScreen";
 import { McpScreen } from "@/features/mcp-manage/components/McpScreen";
 import { LogsScreen } from "@/features/mcp-logs/components/LogsScreen";
 import { SkillsScreen } from "@/features/skills/components/SkillsScreen";
 
+/** Held until the session resolves, so no screen renders on a guess. */
+function Booting() {
+  return <div className="min-h-dvh bg-background" />;
+}
+
 /**
  * Routes that require a finished onboarding. Anyone without a company is sent
- * back to the flow, which resumes at whichever step they stopped on.
+ * to the flow, which resumes at whichever step they stopped on.
  */
 function Protected({ children }: { children: ReactNode }) {
   const { status, isOnboarded } = useSession();
 
   // Hold the shell back until the session resolves, or a signed-in user would
   // see the onboarding screen flash before their dashboard.
-  if (status === "loading") {
-    return <div className="min-h-dvh bg-background" />;
-  }
-
-  if (!isOnboarded) {
-    return <Navigate to="/" replace />;
-  }
+  if (status === "loading") return <Booting />;
+  if (!isOnboarded) return <Navigate to="/start" replace />;
 
   return <AppShell>{children}</AppShell>;
+}
+
+/**
+ * The marketing page, which doubles as the signed-in user's front door: if you
+ * already have a workspace, there is nothing to sell you.
+ */
+function LandingRoute() {
+  const { status, isOnboarded } = useSession();
+
+  if (status === "loading") return <Booting />;
+  return isOnboarded ? <Navigate to="/mcp" replace /> : <LandingScreen />;
 }
 
 /**
@@ -42,9 +54,7 @@ function OnboardingRoute() {
   // retroactively count as "already onboarded" and skip the remaining steps.
   const wasOnboardedOnEntry = useRef<boolean | null>(null);
 
-  if (status === "loading") {
-    return <div className="min-h-dvh bg-background" />;
-  }
+  if (status === "loading") return <Booting />;
 
   if (wasOnboardedOnEntry.current === null) {
     wasOnboardedOnEntry.current = isOnboarded;
@@ -59,7 +69,8 @@ export default function App() {
       <BrowserRouter>
         <SessionProvider>
           <Routes>
-            <Route path="/" element={<OnboardingRoute />} />
+            <Route path="/" element={<LandingRoute />} />
+            <Route path="/start" element={<OnboardingRoute />} />
             <Route
               path="/mcp"
               element={

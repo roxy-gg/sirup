@@ -16,13 +16,7 @@ export function list(connectedUrls: Array<string | null> = []): CatalogEntry[] {
   }));
 }
 
-/**
- * Trailing slashes and case differences shouldn't read as different servers.
- *
- * This matters more than it looks: several providers *require* a trailing
- * slash (GitHub, Tavily), so the stored URL and the catalog URL can differ by
- * one character while pointing at the same server.
- */
+/** Trailing slashes and case differences shouldn't read as different servers. */
 function normalizeUrl(value: string): string {
   try {
     const url = new URL(value);
@@ -30,4 +24,18 @@ function normalizeUrl(value: string): string {
   } catch {
     return String(value).trim().toLowerCase();
   }
+}
+
+/**
+ * The signed-out view of the catalog, for the marketing page.
+ *
+ * Same source of truth as the dashboard, minus anything company-specific: no
+ * `connected` flags, and the custom-server escape hatch is dropped because it
+ * is not an app anyone recognises in a logo wall.
+ */
+export function publicCatalog(): CatalogEntry[] {
+  return data
+    .listCatalog()
+    .filter((entry) => entry.key !== "custom")
+    .map((entry) => ({ ...entry, connected: false }));
 }

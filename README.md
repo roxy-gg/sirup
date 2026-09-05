@@ -127,8 +127,13 @@ app/src/features/mcp-manage/
 └── data/          API calls, typed by shared/api.ts
 ```
 
-Screens: `onboarding` · `mcp-manage` · `mcp-discover` · `mcp-logs` · `skills` ·
-`auth` · `theme`.
+Screens: `marketing` · `onboarding` · `mcp-manage` · `mcp-discover` ·
+`mcp-logs` · `skills` · `auth` · `theme`.
+
+Routes: `/` is the public landing page, `/start` is onboarding, and everything
+else sits behind a finished workspace. The landing page reads the catalog from
+`GET /api/public/apps` — the same list the dashboard uses, so the logos and
+counts it shows cannot drift from what the product actually connects to.
 
 ## Stack
 

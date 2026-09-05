@@ -24,6 +24,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   async function handleSignOut() {
     await signOut();
+    // Back to the marketing page, which is the signed-out front door.
     void navigate("/", { replace: true });
   }
 
