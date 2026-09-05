@@ -225,6 +225,7 @@ export function McpScreen() {
             label={`${activeProfile?.name ?? "Profile"} token`}
             value={activeProfile?.gateway_token ?? ""}
             className="flex-1"
+            secret
           />
         </div>
 

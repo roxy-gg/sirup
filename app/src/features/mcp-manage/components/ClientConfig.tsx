@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckIcon, ChevronRightIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CopyIcon, EyeIcon, EyeOffIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useCopy } from "@/features/onboarding/hooks/useCopy";
@@ -32,6 +32,7 @@ export function ClientConfig({
   defaultOpen = false,
 }: ClientConfigProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const [revealed, setRevealed] = useState(false);
   const { copied, copy } = useCopy();
 
   // Slugified so the key is valid in every client's config format.
@@ -41,19 +42,31 @@ export function ClientConfig({
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "") || "sirup";
 
-  const json = JSON.stringify(
-    {
-      mcpServers: {
-        [key]: {
-          type: "http",
-          url: endpoint,
-          headers: { Authorization: `Bearer ${token}` },
+  /** The config, with the token either real or masked. */
+  const build = (secret: string) =>
+    JSON.stringify(
+      {
+        mcpServers: {
+          [key]: {
+            type: "http",
+            url: endpoint,
+            headers: { Authorization: `Bearer ${secret}` },
+          },
         },
       },
-    },
-    null,
-    2,
-  );
+      null,
+      2,
+    );
+
+  // Masked on screen, real on copy. Showing the token here would undo the
+  // masking on the field above, since this block sits directly beneath it.
+  const separator = token.indexOf("_");
+  const maskedToken = token
+    ? `${token.slice(0, separator >= 0 ? separator + 3 : 3)}${"•".repeat(24)}`
+    : "";
+
+  const json = build(token);
+  const shown = revealed ? json : build(maskedToken);
 
   return (
     <div className={cn("surface-flat overflow-hidden rounded-lg", className)}>
@@ -80,35 +93,47 @@ export function ClientConfig({
 
       {open ? (
         <div className="relative border-t">
-          {/* Absolute so the button does not push the code block's layout
+          {/* Absolute so the buttons do not push the code block's layout
               around, and the JSON stays the thing you are looking at. */}
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => void copy(json)}
-            aria-label={copied ? "Copied" : "Copy client config"}
-            className="absolute top-2 right-2"
-          >
-            <span className="grid *:col-start-1 *:row-start-1">
-              <CopyIcon
-                className="transition-[opacity,transform] duration-[var(--duration-fast)]"
-                style={{
-                  opacity: copied ? 0 : 1,
-                  transform: copied ? "scale(0.7)" : "scale(1)",
-                }}
-              />
-              <CheckIcon
-                className="transition-[opacity,transform] duration-[var(--duration-fast)]"
-                style={{
-                  opacity: copied ? 1 : 0,
-                  transform: copied ? "scale(1)" : "scale(0.7)",
-                }}
-              />
-            </span>
-          </Button>
+          <div className="absolute top-2 right-2 flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => setRevealed((current) => !current)}
+              aria-label={revealed ? "Hide token" : "Show token"}
+              title={revealed ? "Hide token" : "Show token"}
+            >
+              {revealed ? <EyeOffIcon /> : <EyeIcon />}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              // Always copies the real config, masked or not.
+              onClick={() => void copy(json)}
+              aria-label={copied ? "Copied" : "Copy client config"}
+            >
+              <span className="grid *:col-start-1 *:row-start-1">
+                <CopyIcon
+                  className="transition-[opacity,transform] duration-[var(--duration-fast)]"
+                  style={{
+                    opacity: copied ? 0 : 1,
+                    transform: copied ? "scale(0.7)" : "scale(1)",
+                  }}
+                />
+                <CheckIcon
+                  className="transition-[opacity,transform] duration-[var(--duration-fast)]"
+                  style={{
+                    opacity: copied ? 1 : 0,
+                    transform: copied ? "scale(1)" : "scale(0.7)",
+                  }}
+                />
+              </span>
+            </Button>
+          </div>
 
           <pre className="overflow-x-auto px-3 py-3 text-xs leading-relaxed">
-            <code className="font-mono">{json}</code>
+            <code className="font-mono">{shown}</code>
           </pre>
         </div>
       ) : null}

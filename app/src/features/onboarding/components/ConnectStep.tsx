@@ -33,7 +33,7 @@ export function ConnectStep({ profile, onContinue }: ConnectStepProps) {
 
       <div className="flex flex-col gap-3">
         <CopyField label="Endpoint URL" value={endpoint} />
-        <CopyField label="Gateway token" value={token} />
+        <CopyField label="Gateway token" value={token} secret />
 
         {/* Open here: pasting this config is the whole point of the step, so
             hiding it behind a click would be one obstacle too many. */}
