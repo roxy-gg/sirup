@@ -100,9 +100,8 @@ export function LandingScreen() {
             )}
           </p>
           <p className="text-sm leading-relaxed text-text-tertiary">
-            Skills — shared prompts and playbooks over the same endpoint — are
-            next, once the MCP spec for them settles. Anything with a public
-            MCP endpoint works today, listed or not.
+            Anything with a public MCP endpoint works today, listed or not —
+            paste the URL and sirup discovers its tools.
           </p>
         </section>
 

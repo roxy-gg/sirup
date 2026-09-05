@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/empty";
 import { useMcpLogs } from "../hooks/useMcpLogs";
 import { isUuid } from "@/lib/uuid";
-import { LogRow } from "./LogRow";
+import { LogRow, LOG_GRID } from "./LogRow";
+import { cn } from "@/lib/utils";
 import type { LogStatus } from "@shared/domain";
 
 type Filter = "all" | LogStatus;
@@ -41,10 +42,12 @@ export function LogsScreen() {
   const isLoading = loadState === "loading";
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+    // Wider than the other screens: six columns of tabular data need the room,
+    // and at max-w-4xl the last one was being squeezed off the card.
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       <header className="flex flex-col gap-1">
-        <h1 className="text-xl font-semibold tracking-tight">Logs</h1>
-        <p className="text-sm text-muted-foreground">
+        <h1 className="text-lg font-semibold tracking-tight">Logs</h1>
+        <p className="text-sm text-text-tertiary">
           Every tool call routed through your gateway.
         </p>
       </header>
@@ -92,7 +95,24 @@ export function LogsScreen() {
         </Empty>
       ) : (
         <div className="flex flex-col gap-3">
-          <Card className="theme-surface overflow-hidden py-0">
+          <Card className="overflow-hidden py-0">
+            {/* Shares LOG_GRID with the rows, so headings and values cannot
+                drift apart when a column width changes. */}
+            <div
+              className={cn(
+                LOG_GRID,
+                "items-center gap-3 border-b border-l-2 border-l-transparent bg-muted/40",
+                "py-2 pr-4 pl-3 text-tiny font-medium text-text-quaternary",
+              )}
+            >
+              <span>Time</span>
+              <span>Server</span>
+              <span>Tool</span>
+              <span className="hidden lg:block">Detail</span>
+              <span className="text-right">Took</span>
+              <span className="text-right">Result</span>
+            </div>
+
             <CardContent className="divide-y p-0">
               {logs.map((log) => (
                 <LogRow key={log.id} log={log} />
@@ -118,9 +138,9 @@ export function LogsScreen() {
 
 function SummaryTile({ label, value }: { label: string; value: number | undefined }) {
   return (
-    <Card className="theme-surface">
+    <Card>
       <CardContent className="flex flex-col gap-1 p-4">
-        <span className="text-xs text-muted-foreground">{label}</span>
+        <span className="text-xs text-text-tertiary">{label}</span>
         {value === undefined ? (
           <Skeleton className="h-7 w-12" />
         ) : (

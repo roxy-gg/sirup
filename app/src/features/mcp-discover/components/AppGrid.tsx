@@ -76,11 +76,11 @@ function AppRow({
       }
       className={cn(
         "theme-surface surface group flex items-center gap-3 rounded-xl bg-card p-3",
-        "transition-all duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)]",
-        interactive &&
-          // Lifting brightens the top edge rather than adding a blur, so the
-          // hover reads as the card catching more light.
-          "cursor-pointer hover:-translate-y-px hover:border-[var(--border-translucent-strong)] hover:brightness-[1.04]",
+        // Colour-only hover. A transform here made every card in the grid
+        // twitch as the pointer crossed it, which reads as noise on a list
+        // this dense.
+        "transition-colors duration-[var(--duration-quick)]",
+        interactive && "cursor-pointer hover:bg-accent/40",
         interactive &&
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
         unavailable && "opacity-60",

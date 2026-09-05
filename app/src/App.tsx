@@ -8,7 +8,6 @@ import { LandingScreen } from "@/features/marketing/components/LandingScreen";
 import { OnboardingScreen } from "@/features/onboarding/components/OnboardingScreen";
 import { McpScreen } from "@/features/mcp-manage/components/McpScreen";
 import { LogsScreen } from "@/features/mcp-logs/components/LogsScreen";
-import { SkillsScreen } from "@/features/skills/components/SkillsScreen";
 
 /** Held until the session resolves, so no screen renders on a guess. */
 function Booting() {
@@ -84,14 +83,6 @@ export default function App() {
               element={
                 <Protected>
                   <LogsScreen />
-                </Protected>
-              }
-            />
-            <Route
-              path="/skills"
-              element={
-                <Protected>
-                  <SkillsScreen />
                 </Protected>
               }
             />

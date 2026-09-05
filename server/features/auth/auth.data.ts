@@ -29,6 +29,21 @@ export function findCompanyBySlug(slug: string) {
   return CompanyModel.query().findOne({ slug });
 }
 
+/**
+ * Every slug already taken for this base, in one query.
+ *
+ * Probing candidates one at a time only works while the list of guesses is
+ * long enough -- the tenth "Acme Inc" fell off the end and got a random-hex
+ * slug. Reading the whole family lets the caller pick the next free number
+ * however many exist.
+ */
+export function listSlugsLike(base: string) {
+  return CompanyModel.query()
+    .where("slug", base)
+    .orWhere("slug", "like", `${base}-%`)
+    .select("slug");
+}
+
 export function insertCompany(input: {
   name: string;
   slug: string;

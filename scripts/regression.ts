@@ -5,7 +5,7 @@
  * Usage: npm run check:regression
  */
 import { ApiClient, BASE, Checks, uniqueEmail } from "./_harness.js";
-import type { LogListResponse, ServerResponse } from "../shared/api.js";
+import type { LogListResponse, ServerResponse, SessionResponse } from "../shared/api.js";
 
 const t = new Checks(`Regression tests against ${BASE}`);
 const api = new ApiClient();
@@ -76,6 +76,59 @@ api.clearSession();
 const anon = await api.call("GET", "/mcp-servers");
 t.check("unauthenticated request gets 401", anon.status === 401, anon.status);
 api.sessionCookie = saved;
+
+// --- BUG: slug allocation gave up after nine candidates ---
+// The tenth company sharing a name got an unreadable random-hex slug, because
+// createCompany probed a fixed list of guesses instead of reading the family.
+const SHARED_NAME = "Slug Collision Co";
+const slugs: string[] = [];
+for (let i = 0; i < 12; i += 1) {
+  const fresh = new ApiClient();
+  await fresh.call("POST", "/auth/register", {
+    email: uniqueEmail("slug"),
+    password: "supersecret123",
+  });
+  const created = await fresh.call<SessionResponse>("POST", "/auth/company", {
+    name: SHARED_NAME,
+  });
+  const slug = created.payload?.company?.slug;
+  if (slug) slugs.push(slug);
+}
+
+t.check("twelve same-named companies all got a slug", slugs.length === 12, slugs.length);
+t.check(
+  "every slug is unique",
+  new Set(slugs).size === slugs.length,
+  `${new Set(slugs).size} distinct`,
+);
+t.check(
+  "slugs stay readable past the tenth",
+  slugs.every((slug) => /^slug-collision-co(-\d+)?$/.test(slug)),
+  slugs.filter((slug) => !/^slug-collision-co(-\d+)?$/.test(slug)).join(", ") || "all numbered",
+);
+
+// --- concurrent signups with the same name must not 500 ---
+// Both read the same set of taken slugs, so the database has to arbitrate.
+const concurrent = await Promise.all(
+  Array.from({ length: 4 }, async () => {
+    const fresh = new ApiClient();
+    await fresh.call("POST", "/auth/register", {
+      email: uniqueEmail("race"),
+      password: "supersecret123",
+    });
+    return fresh.call<SessionResponse>("POST", "/auth/company", { name: "Race Co" });
+  }),
+);
+t.check(
+  "concurrent same-name signups all succeed",
+  concurrent.every((r) => r.status === 201),
+  concurrent.map((r) => r.status).join(", "),
+);
+t.check(
+  "concurrent signups got distinct slugs",
+  new Set(concurrent.map((r) => r.payload?.company?.slug)).size === concurrent.length,
+  concurrent.map((r) => r.payload?.company?.slug).join(", "),
+);
 
 // --- the server must still be alive after all of the above ---
 const health = await api.call<{ ok: boolean }>("GET", "/health");

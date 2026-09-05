@@ -2,6 +2,17 @@ import { cn } from "@/lib/utils";
 import type { McpLog } from "@shared/domain";
 
 /**
+ * The shared column template.
+ *
+ * Exported so the header and the rows use one definition: time · server ·
+ * tool · detail · duration · result. The detail column is the only flexible
+ * one, so it absorbs the slack and everything else stays put — with flex, a
+ * long tool name pushed the last columns off the card edge.
+ */
+export const LOG_GRID =
+  "grid grid-cols-[92px_minmax(0,120px)_minmax(0,1fr)_64px_56px] lg:grid-cols-[92px_minmax(0,120px)_minmax(0,1fr)_minmax(0,1.2fr)_64px_56px]";
+
+/**
  * COMPONENT (stateless) -- one log line.
  *
  * Dense by design: this screen is scanned, not read. The failure marker is a
@@ -13,39 +24,45 @@ export function LogRow({ log }: { log: McpLog }) {
   return (
     <div
       className={cn(
-        "flex items-center gap-3 border-l-2 py-2.5 pl-3 text-sm",
+        LOG_GRID,
+        "items-center gap-3 border-l-2 py-2 pr-4 pl-3 text-mini",
         isError ? "border-l-foreground bg-muted/40" : "border-l-transparent",
       )}
     >
       <time
-        className="w-[104px] shrink-0 font-mono text-xs text-muted-foreground"
+        className="font-mono text-xs tabular-nums text-text-quaternary"
         dateTime={log.created_at}
       >
         {formatTime(log.created_at)}
       </time>
 
-      <span className="w-24 shrink-0 truncate text-xs text-muted-foreground">
+      <span className="truncate text-xs text-text-tertiary">
         {log.server_name ?? "gateway"}
       </span>
 
-      <span className="min-w-0 flex-1 truncate font-mono text-xs">
+      <span className="truncate font-mono text-xs" title={log.tool_name ?? log.method}>
         {log.tool_name ?? log.method}
       </span>
 
-      {log.message ? (
-        <span
-          className="hidden min-w-0 max-w-[40%] flex-1 truncate text-xs text-muted-foreground lg:block"
-          title={log.message}
-        >
-          {log.message}
-        </span>
-      ) : null}
+      {/* Hidden below lg, where there is no room for it. The grid drops the
+          column to match, so nothing shifts. */}
+      <span
+        className="hidden truncate text-xs text-text-quaternary lg:block"
+        title={log.message ?? undefined}
+      >
+        {log.message ?? ""}
+      </span>
 
-      <span className="w-14 shrink-0 text-right font-mono text-xs text-muted-foreground">
+      <span className="text-right font-mono text-xs tabular-nums text-text-quaternary">
         {log.duration_ms === null ? "—" : `${log.duration_ms}ms`}
       </span>
 
-      <span className="w-12 shrink-0 text-right text-xs">
+      <span
+        className={cn(
+          "text-right text-xs",
+          isError ? "font-medium text-foreground" : "text-text-quaternary",
+        )}
+      >
         {isError ? "failed" : "ok"}
       </span>
     </div>

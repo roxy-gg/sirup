@@ -96,23 +96,42 @@ export async function createCompany(
   }
 
   const base = slugify(name, "company");
-  const taken = new Set<string>();
-  // Slugs are globally unique, so probe rather than fetching every company.
-  const candidates = [base, ...Array.from({ length: 8 }, (_, i) => `${base}-${i + 2}`)];
-  for (const candidate of candidates) {
-    // eslint-disable-next-line no-await-in-loop
-    if (await data.findCompanyBySlug(candidate)) taken.add(candidate);
+
+  // Read the whole family of existing slugs rather than probing a fixed
+  // number of guesses. Probing nine candidates meant the tenth company named
+  // "Acme Inc" fell off the end and got an unreadable random-hex slug.
+  const existing = await data.listSlugsLike(base);
+  const taken = new Set(existing.map((row) => row.slug));
+
+  // Retry on a unique violation: two people signing up with the same company
+  // name at the same moment both read the same set and pick the same slug.
+  // The database is the arbiter, so let it arbitrate.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const slug = uniqueSlug(base, taken);
+
+    try {
+      const company = await data.insertCompany({
+        name,
+        slug,
+        gatewayToken: generateGatewayToken(),
+      });
+
+      await data.attachUserToCompany(user.id, company.id);
+      return company;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // Someone took it between our read and our write; exclude and retry.
+      taken.add(slug);
+    }
   }
 
-  const company = await data.insertCompany({
-    name,
-    slug: uniqueSlug(base, taken),
-    gatewayToken: generateGatewayToken(),
-  });
+  throw ApiError.conflict("Could not allocate a workspace name. Try another.");
+}
 
-  await data.attachUserToCompany(user.id, company.id);
-
-  return company;
+/** Postgres 23505, wrapped by Objection one level down. */
+function isUniqueViolation(error: unknown): boolean {
+  const sqlError = error as { code?: string; nativeError?: { code?: string } };
+  return sqlError?.code === "23505" || sqlError?.nativeError?.code === "23505";
 }
 
 /** The payload every screen bootstraps from: who am I, and what's my company. */
