@@ -29,6 +29,17 @@ export interface Company {
 /** How a company authenticates to one upstream MCP server. */
 export type AuthType = "none" | "bearer" | "header";
 
+/**
+ * What an upstream server *requires*, which is not the same as what we can do.
+ *
+ * - "none"   — connect immediately, no credential.
+ * - "token"  — paste a static API key or PAT. Works today.
+ * - "oauth"  — needs a browser authorization-code flow against the provider.
+ *              We cannot complete these yet, so the UI says so plainly rather
+ *              than offering a Connect button that leads to a dead end.
+ */
+export type CatalogAuth = "none" | "token" | "oauth";
+
 /** Discovery state of an upstream, as of the last connection attempt. */
 export type ServerStatus = "pending" | "connected" | "error";
 
@@ -96,15 +107,23 @@ export interface LogSummary {
   error: number;
 }
 
-/** An entry in the starter catalog on the Discover screen. */
+/** An entry in the app catalog on the Discover screen. */
 export interface CatalogEntry {
   key: string;
   name: string;
   category: string;
   description: string;
-  /** Null where a provider has no single public remote endpoint yet. */
+  /** Null where a provider has no single public remote endpoint. */
   url: string | null;
+  /** What the provider requires. Drives whether Connect is offered. */
+  auth: CatalogAuth;
+  /** Which auth type to preselect when `auth` is "token". */
   auth_type: AuthType;
+  /** Header name when the provider wants a custom header rather than bearer. */
+  auth_header_name?: string;
+  /** What to paste, e.g. "GitHub personal access token". */
   auth_hint: string;
+  /** simple-icons slug for the brand mark, when one exists. */
+  icon: string | null;
   connected: boolean;
 }

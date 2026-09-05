@@ -3,7 +3,7 @@ import type { CatalogEntry } from "../../../shared/domain.js";
 
 /**
  * LOGIC -- marks which catalog entries the company already connected, so the
- * Discover grid can show "Connected" instead of offering a duplicate.
+ * grid can show "Added" instead of offering a duplicate.
  */
 export function list(connectedUrls: Array<string | null> = []): CatalogEntry[] {
   const connected = new Set(
@@ -16,7 +16,13 @@ export function list(connectedUrls: Array<string | null> = []): CatalogEntry[] {
   }));
 }
 
-/** Trailing slashes and case differences shouldn't read as different servers. */
+/**
+ * Trailing slashes and case differences shouldn't read as different servers.
+ *
+ * This matters more than it looks: several providers *require* a trailing
+ * slash (GitHub, Tavily), so the stored URL and the catalog URL can differ by
+ * one character while pointing at the same server.
+ */
 function normalizeUrl(value: string): string {
   try {
     const url = new URL(value);

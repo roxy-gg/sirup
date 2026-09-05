@@ -16,7 +16,7 @@
     "migrate": "knex --knexfile knexfile.ts migrate:latest",
     "migrate:rollback": "knex --knexfile knexfile.ts migrate:rollback",
     "migrate:make": "knex --knexfile knexfile.ts migrate:make",
-    "test": "npm run typecheck && npm run check:build && npm run check:connection && npm run check:smoke && npm run check:regression && npm run check:pagination && npm run check:pool && npm run check:timestamps && npm run check:indexes && npm run check:route",
+    "test": "npm run typecheck && npm run check:build && npm run check:catalog && npm run check:connect-flow && npm run check:connection && npm run check:smoke && npm run check:regression && npm run check:pagination && npm run check:pool && npm run check:timestamps && npm run check:indexes && npm run check:route",
     "check:build": "tsx scripts/check-build.ts",
     "check:connection": "tsx scripts/check-connection.ts",
     "check:smoke": "tsx scripts/smoke.ts",
@@ -31,7 +31,10 @@
     "db:up": "docker compose -f docker-compose.dev.yml up -d",
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "db:schema": "tsx scripts/inspect-schema.ts",
-    "pg:dev": "tsx scripts/pg-dev.ts"
+    "pg:dev": "tsx scripts/pg-dev.ts",
+    "gen:icons": "tsx scripts/gen-icons.ts",
+    "check:catalog": "tsx scripts/check-catalog.ts",
+    "check:connect-flow": "tsx scripts/check-connect-flow.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
@@ -52,6 +55,7 @@
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
+    "simple-icons": "^16.29.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "tsx": "^4.20.6",

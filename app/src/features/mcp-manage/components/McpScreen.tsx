@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { PlusIcon } from "lucide-react";
+import { PlusIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -16,53 +17,77 @@ import { toast } from "sonner";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpCatalog } from "@/features/mcp-discover/hooks/useMcpCatalog";
-import { CatalogGrid } from "@/features/mcp-discover/components/CatalogGrid";
+import { AppGrid } from "@/features/mcp-discover/components/AppGrid";
 import { CopyField } from "@/features/onboarding/components/CopyField";
+import { GatewayDiagram, type HeroApp } from "./GatewayDiagram";
 import { ServerCard } from "./ServerCard";
-import { ConnectDialog } from "./ConnectDialog";
+import { ConnectSheet } from "./ConnectSheet";
+import { setToolEnabled } from "../data/mcpServersApi";
 import type { ConnectServerBody } from "@shared/api";
-import type { CatalogEntry, Uuid } from "@shared/domain";
+import type { CatalogEntry, McpServerWithTools, Uuid } from "@shared/domain";
 
 /**
- * COMPONENT -- the MCP full screen. Two tabs, matching the wireframe: what's
- * connected, and a catalog to connect from.
+ * COMPONENT -- the MCP full screen.
+ *
+ * The catalog is the default tab, not the connected list. A new workspace has
+ * nothing connected, so opening on "what can I add" is the useful first screen;
+ * the connected list is where you go once there is something to manage.
  */
 export function McpScreen() {
   const { company } = useSession();
   const servers = useMcpServers();
 
-  const [tab, setTab] = useState("manage");
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [preset, setPreset] = useState<CatalogEntry | null>(null);
+  const [tab, setTab] = useState("apps");
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selected, setSelected] = useState<CatalogEntry | null>(null);
   // Bumped after a connect so the catalog re-reads its "Added" flags.
   const [catalogKey, setCatalogKey] = useState(0);
 
   const catalog = useMcpCatalog(catalogKey);
   const endpoint = `${window.location.origin}/mcp`;
 
-  function openDialog(entry: CatalogEntry | null) {
-    setPreset(entry);
-    setDialogOpen(true);
+  // The diagram shows what this company actually connected, falling back to a
+  // representative set while the list is empty.
+  const heroApps: HeroApp[] = servers.servers
+    .filter((server) => server.status === "connected")
+    .slice(0, 5)
+    .map((server) => ({
+      name: server.name,
+      icon:
+        catalog.catalog.find(
+          (entry) => entry.url && entry.url === server.url,
+        )?.icon ?? null,
+    }));
+
+  function openSheet(app: CatalogEntry) {
+    setSelected(app);
+    setSheetOpen(true);
   }
 
-  async function handleConnect(payload: ConnectServerBody) {
-    const server = await servers.connect(payload);
-    setCatalogKey((key) => key + 1);
-    setTab("manage");
+  async function handleConnect(
+    payload: ConnectServerBody,
+  ): Promise<McpServerWithTools> {
+    return servers.connect(payload);
+  }
 
-    if (server.status === "connected") {
-      toast.success(`${server.name} connected`, {
-        description: `${server.tool_count} tool${
-          server.tool_count === 1 ? "" : "s"
-        } added to your gateway.`,
-      });
-    } else {
-      // Saved but unreachable: say so plainly rather than a bare success toast.
-      toast.warning(`${server.name} saved, but not reachable`, {
-        description:
-          server.status_message ?? "Check the URL and credentials, then retry.",
-      });
-    }
+  async function handleSetToolEnabled(
+    serverId: string,
+    toolId: string,
+    enabled: boolean,
+  ) {
+    await setToolEnabled(serverId as Uuid, toolId as Uuid, enabled);
+  }
+
+  function handleDone(server: McpServerWithTools) {
+    setCatalogKey((key) => key + 1);
+    void servers.reload();
+    setTab("connected");
+
+    toast.success(`${server.name} connected`, {
+      description: `${server.tool_count} tool${
+        server.tool_count === 1 ? "" : "s"
+      } now available on your endpoint.`,
+    });
   }
 
   async function handleDisconnect(id: Uuid) {
@@ -99,21 +124,23 @@ export function McpScreen() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h1 className="text-xl font-semibold tracking-tight">MCP servers</h1>
-            <p className="text-sm text-muted-foreground">
-              {servers.totalTools} tool{servers.totalTools === 1 ? "" : "s"} served
-              through one endpoint.
-            </p>
-          </div>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+      {/* ── Hero: the pitch, plus the credentials you need ─────────────── */}
+      <section className="theme-surface flex flex-col gap-6 rounded-2xl border bg-card p-6">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-xl font-semibold tracking-tight">
+            One endpoint for every app your agents use
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {servers.totalTools} tool{servers.totalTools === 1 ? "" : "s"} from{" "}
+            {servers.servers.length} app{servers.servers.length === 1 ? "" : "s"},
+            served through a single URL. Connect another and every client picks it
+            up — no config changes.
+          </p>
+        </div>
 
-          <Button onClick={() => openDialog(null)}>
-            <PlusIcon data-icon="inline-start" />
-            Connect
-          </Button>
+        <div className="hidden justify-center py-2 md:flex">
+          <GatewayDiagram apps={heroApps} endpoint={endpoint} />
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -124,17 +151,62 @@ export function McpScreen() {
             className="flex-1"
           />
         </div>
-      </header>
+      </section>
 
       <Separator />
 
-      <Tabs value={tab} onValueChange={setTab} className="gap-6">
-        <TabsList>
-          <TabsTrigger value="manage">Connected ({servers.servers.length})</TabsTrigger>
-          <TabsTrigger value="discover">Discover</TabsTrigger>
-        </TabsList>
+      <Tabs value={tab} onValueChange={setTab} className="gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="apps">All apps</TabsTrigger>
+            <TabsTrigger value="connected">
+              Connected ({servers.servers.length})
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="manage" className="flex flex-col gap-3">
+          {tab === "apps" ? (
+            <div className="relative w-full sm:w-72">
+              <SearchIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search apps — github, stripe, notion…"
+                value={catalog.query}
+                onChange={(event) => catalog.setQuery(event.target.value)}
+                className="pl-9"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {/* ── All apps: the default view ──────────────────────────────── */}
+        <TabsContent value="apps" className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            {catalog.connectableCount} apps connect with an API key today.
+            Providers marked <span className="text-foreground">OAuth soon</span>{" "}
+            need a browser sign-in flow we haven&rsquo;t shipped yet.
+          </p>
+
+          <div className="flex flex-wrap gap-1.5">
+            {catalog.categories.map((category) => (
+              <Button
+                key={category}
+                variant={catalog.category === category ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => catalog.setCategory(category)}
+              >
+                {category}
+              </Button>
+            ))}
+          </div>
+
+          <AppGrid
+            apps={catalog.catalog}
+            status={catalog.status}
+            onSelect={openSheet}
+          />
+        </TabsContent>
+
+        {/* ── Connected ───────────────────────────────────────────────── */}
+        <TabsContent value="connected" className="flex flex-col gap-3">
           {servers.status === "loading" ? (
             Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-[92px] rounded-xl" />
@@ -145,14 +217,14 @@ export function McpScreen() {
                 <EmptyMedia variant="icon">
                   <PlusIcon />
                 </EmptyMedia>
-                <EmptyTitle>No servers connected</EmptyTitle>
+                <EmptyTitle>Nothing connected yet</EmptyTitle>
                 <EmptyDescription>
-                  Connect your first MCP server and its tools appear on your
-                  gateway instantly.
+                  Add your first app and its tools appear on your endpoint
+                  instantly.
                 </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
-                <Button onClick={() => setTab("discover")}>Browse servers</Button>
+                <Button onClick={() => setTab("apps")}>Browse apps</Button>
               </EmptyContent>
             </Empty>
           ) : (
@@ -168,35 +240,15 @@ export function McpScreen() {
             ))
           )}
         </TabsContent>
-
-        <TabsContent value="discover" className="flex flex-col gap-4">
-          {/* Category filter: a segmented control, not page navigation. */}
-          <div className="flex flex-wrap gap-1.5">
-            {catalog.categories.map((category) => (
-              <Button
-                key={category}
-                variant={catalog.category === category ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => catalog.setCategory(category)}
-              >
-                {category}
-              </Button>
-            ))}
-          </div>
-
-          <CatalogGrid
-            catalog={catalog.catalog}
-            status={catalog.status}
-            onSelect={openDialog}
-          />
-        </TabsContent>
       </Tabs>
 
-      <ConnectDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        preset={preset}
+      <ConnectSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        app={selected}
         onConnect={handleConnect}
+        onSetToolEnabled={handleSetToolEnabled}
+        onDone={handleDone}
       />
     </div>
   );
