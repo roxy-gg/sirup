@@ -1,0 +1,100 @@
+# sirup.gg — Dokploy deployment
+#
+# App and Postgres run side by side on the same server, on a private network
+# that only they can see. Only the app is reachable from outside, and only
+# through Traefik.
+#
+# In Dokploy:
+#   1. Create a Docker Compose service pointed at this repo.
+#   2. Set the variables below in the Environment tab.
+#   3. Add your domain in the Domains tab, targeting service `app`, port 3000.
+#      Dokploy injects the Traefik labels and attaches `dokploy-network`
+#      to `app` automatically — that's why neither is written here.
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-sirup}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the Dokploy environment}
+      POSTGRES_DB: ${POSTGRES_DB:-sirup}
+      # Deterministic collation. Without this the locale comes from the image
+      # and an index built on one host can misbehave on another.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+
+    # A named volume, not a bind mount: this is what Dokploy's Volume Backups
+    # feature can snapshot to S3. Bind mounts cannot be backed up.
+    volumes:
+      - sirup_db_data:/var/lib/postgresql/data
+
+    # No `ports:`. The database must never be reachable from the internet —
+    # only the app, over the private network below.
+    networks:
+      - sirup_internal
+
+    # `pg_isready` alone returns true during init, so the check also names the
+    # user and database to confirm the cluster is actually serving them.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sirup} -d ${POSTGRES_DB:-sirup} -h 127.0.0.1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    # Postgres uses shared memory for parallel queries; Docker's 64MB default
+    # is low enough to cause failures under load.
+    shm_size: 256mb
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # Discrete PG* vars rather than a composed DATABASE_URL: a password
+      # containing "/", "#", or "@" would break URL parsing and crash-loop the
+      # app. Passing the fields separately means the password is never parsed.
+      PGHOST: db
+      PGPORT: "5432"
+      PGUSER: ${POSTGRES_USER:-sirup}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the Dokploy environment}
+      PGDATABASE: ${POSTGRES_DB:-sirup}
+      # Same-host Postgres over a private Docker network; TLS adds nothing here.
+      DATABASE_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in the Dokploy environment}
+      UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-30000}
+
+    # `expose`, not `ports`: Traefik reaches this over the Docker network, so
+    # nothing needs to be published on the host.
+    expose:
+      - "3000"
+
+    networks:
+      - sirup_internal
+
+    # Wait for Postgres to pass its healthcheck. The app also retries on boot,
+    # so a slow database delays startup rather than crash-looping it.
+    depends_on:
+      db:
+        condition: service_healthy
+
+    # Bound so a runaway upstream response can't take the host down with it.
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+volumes:
+  sirup_db_data:
+
+networks:
+  # Private to this stack. Dokploy adds `dokploy-network` to `app` when you
+  # attach a domain; keeping the database off that network means Traefik has
+  # no route to it.
+  sirup_internal:
+    driver: bridge

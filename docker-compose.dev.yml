@@ -1,0 +1,35 @@
+# Local development: Postgres only.
+#
+# The app runs on the host via `npm run dev` so you keep HMR and fast restarts.
+# This just provides the database.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   npm run dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: sirup
+      POSTGRES_PASSWORD: sirup
+      POSTGRES_DB: sirup
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+
+    # Published locally so `npm run dev` on the host can reach it. The
+    # production compose deliberately does not do this.
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - sirup_dev_db_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sirup -d sirup -h 127.0.0.1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  sirup_dev_db_data:

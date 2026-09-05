@@ -1,0 +1,18 @@
+# Build context excludes. Keeps the image small and, more importantly, stops
+# local secrets and build artifacts from being copied into a layer.
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+.roxy
+.pgdata
+*.log
+README.md
+scripts
+docker-compose.yml
+docker-compose.dev.yml
+Dockerfile
+.dockerignore

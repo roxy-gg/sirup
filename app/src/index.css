@@ -1,0 +1,310 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Monochromatic palette. Every colour is a neutral, so hierarchy comes from
+   contrast and spacing rather than hue. Dark mode is a true inversion.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --radius: 0.625rem;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.16 0 0);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.16 0 0);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.16 0 0);
+
+  --primary: oklch(0.19 0 0);
+  --primary-foreground: oklch(0.99 0 0);
+
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.19 0 0);
+
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.53 0 0);
+
+  --accent: oklch(0.96 0 0);
+  --accent-foreground: oklch(0.19 0 0);
+
+  /* Even "destructive" stays neutral: meaning is carried by icon and copy. */
+  --destructive: oklch(0.32 0 0);
+  --destructive-foreground: oklch(0.99 0 0);
+
+  --border: oklch(0.91 0 0);
+  --input: oklch(0.91 0 0);
+  --ring: oklch(0.6 0 0);
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.16 0 0);
+  --sidebar-primary: oklch(0.19 0 0);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0 0);
+  --sidebar-accent-foreground: oklch(0.19 0 0);
+  --sidebar-border: oklch(0.91 0 0);
+  --sidebar-ring: oklch(0.6 0 0);
+}
+
+.dark {
+  --background: oklch(0.14 0 0);
+  --foreground: oklch(0.97 0 0);
+
+  --card: oklch(0.18 0 0);
+  --card-foreground: oklch(0.97 0 0);
+
+  --popover: oklch(0.18 0 0);
+  --popover-foreground: oklch(0.97 0 0);
+
+  --primary: oklch(0.97 0 0);
+  --primary-foreground: oklch(0.17 0 0);
+
+  --secondary: oklch(0.24 0 0);
+  --secondary-foreground: oklch(0.97 0 0);
+
+  --muted: oklch(0.24 0 0);
+  --muted-foreground: oklch(0.68 0 0);
+
+  --accent: oklch(0.27 0 0);
+  --accent-foreground: oklch(0.97 0 0);
+
+  --destructive: oklch(0.85 0 0);
+  --destructive-foreground: oklch(0.17 0 0);
+
+  --border: oklch(0.28 0 0);
+  --input: oklch(0.3 0 0);
+  --ring: oklch(0.55 0 0);
+
+  --sidebar: oklch(0.17 0 0);
+  --sidebar-foreground: oklch(0.97 0 0);
+  --sidebar-primary: oklch(0.97 0 0);
+  --sidebar-primary-foreground: oklch(0.17 0 0);
+  --sidebar-accent: oklch(0.26 0 0);
+  --sidebar-accent-foreground: oklch(0.97 0 0);
+  --sidebar-border: oklch(0.28 0 0);
+  --sidebar-ring: oklch(0.55 0 0);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Motion tokens (transitions.dev). Referenced by every animation in the app
+   so timing stays consistent instead of hand-tuned per component.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  --duration-stagger: 40ms;
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+  --duration-very-slow: 500ms;
+
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: ease-in-out;
+  --ease-out: ease-out;
+  --ease-linear: linear;
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+  --ease-bounce-strong: cubic-bezier(0.34, 3.85, 0.64, 1);
+
+  --distance-micro: 4px;
+  --distance-small: 6px;
+  --distance-base: 8px;
+  --distance-medium: 12px;
+  --distance-large: 30px;
+
+  --scale-large: 0.96;
+  --scale-medium: 0.97;
+  --scale-small: 0.98;
+  --scale-tiny: 0.99;
+
+  --blur-small: 2px;
+  --blur-medium: 3px;
+  --blur-large: 8px;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Theme flips touch nearly every surface; transitioning them all is
+     expensive and causes flicker, so only the two that read as "the page". */
+  html.theme-switching body,
+  html.theme-switching .theme-surface {
+    transition:
+      background-color var(--duration-fast) var(--ease-in-out),
+      border-color var(--duration-fast) var(--ease-in-out);
+  }
+}
+
+/* ── Texts reveal — staggered blurred rise for stacked lines ───────────── */
+.t-stagger > * {
+  opacity: 0;
+  filter: blur(var(--blur-medium));
+  transform: translateY(var(--distance-medium));
+}
+
+.t-stagger.is-revealed > * {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateY(0);
+  transition:
+    opacity var(--duration-very-slow) var(--ease-in-out),
+    filter var(--duration-very-slow) var(--ease-in-out),
+    transform var(--duration-very-slow) var(--ease-in-out);
+  transition-delay: calc(var(--stagger-index, 0) * var(--duration-stagger));
+}
+
+/* ── Page side-by-side — onboarding step transitions ───────────────────── */
+.t-page {
+  transition:
+    opacity var(--duration-fast) var(--ease-smooth-out),
+    filter var(--duration-fast) var(--ease-smooth-out),
+    transform var(--duration-fast) var(--ease-smooth-out);
+}
+
+.t-page[data-state="enter-from-right"] {
+  opacity: 0;
+  filter: blur(var(--blur-medium));
+  transform: translateX(calc(var(--distance-base) * 2));
+}
+
+.t-page[data-state="enter-from-left"] {
+  opacity: 0;
+  filter: blur(var(--blur-medium));
+  transform: translateX(calc(var(--distance-base) * -2));
+}
+
+.t-page[data-state="active"] {
+  opacity: 1;
+  filter: blur(0);
+  transform: translateX(0);
+}
+
+/* ── Success check — the "you're connected" moment ─────────────────────── */
+.t-success-check {
+  display: inline-block;
+  transform-origin: center;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+
+/* overflow: visible keeps the stroke from clipping while it draws;
+   display: block kills the inline whitespace under SVGs. */
+.t-success-check svg {
+  display: block;
+  overflow: visible;
+}
+
+/* stroke-dasharray/offset are set inline from path.getTotalLength(). */
+.t-success-check svg path {
+  stroke-dashoffset: var(--check-path-length, 24);
+}
+
+.t-success-check[data-state="in"] {
+  animation:
+    t-check-fade var(--duration-very-slow) var(--ease-smooth-out) forwards,
+    t-check-rotate var(--duration-very-slow) var(--ease-smooth-out) forwards,
+    t-check-blur var(--duration-very-slow) var(--ease-smooth-out) forwards,
+    t-check-bob var(--duration-very-slow) var(--ease-bounce) forwards;
+}
+
+.t-success-check[data-state="in"] svg path {
+  animation: t-check-draw var(--duration-very-slow) var(--ease-smooth-out)
+    var(--duration-micro) forwards;
+}
+
+@keyframes t-check-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes t-check-rotate {
+  from { transform: rotate(80deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes t-check-blur {
+  from { filter: blur(var(--blur-large)); }
+  to { filter: blur(0); }
+}
+
+@keyframes t-check-bob {
+  from { translate: 0 var(--distance-large); }
+  to { translate: 0 0; }
+}
+
+@keyframes t-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-stagger > *,
+  .t-stagger.is-revealed > * {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+  }
+
+  .t-page,
+  .t-page[data-state] {
+    opacity: 1;
+    filter: none;
+    transform: none;
+    transition: none;
+  }
+
+  .t-success-check {
+    animation: none !important;
+    opacity: 1;
+  }
+
+  .t-success-check svg path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
