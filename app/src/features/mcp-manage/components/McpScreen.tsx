@@ -20,6 +20,7 @@ import { useMcpCatalog } from "@/features/mcp-discover/hooks/useMcpCatalog";
 import { AppGrid } from "@/features/mcp-discover/components/AppGrid";
 import { AppIcon } from "@/components/AppIcon";
 import { CopyField } from "@/features/onboarding/components/CopyField";
+import { ClientConfig } from "./ClientConfig";
 import { ServerCard } from "./ServerCard";
 import { ConnectSheet } from "./ConnectSheet";
 import { setToolEnabled } from "../data/mcpServersApi";
@@ -226,6 +227,12 @@ export function McpScreen() {
             className="flex-1"
           />
         </div>
+
+        <ClientConfig
+          endpoint={endpoint}
+          token={activeProfile?.gateway_token ?? ""}
+          profileName={activeProfile?.name}
+        />
       </section>
 
       <Separator />
