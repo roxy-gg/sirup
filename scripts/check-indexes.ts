@@ -184,6 +184,19 @@ t.check(
   indexNames(gatewayPlan),
 );
 
+// An OAuth access token is resolved on every request too, by the same hot
+// path. It has to be an index hit for exactly the same reason -- and unlike
+// the profile token, this table grows with every refresh, so a sequential
+// scan here would degrade steadily rather than staying merely bad.
+const oauthTokenPlan = await planFor("SELECT * FROM oauth_tokens WHERE token_hash = $1", [
+  "0".repeat(64),
+]);
+t.check(
+  "OAuth token lookup uses the unique index",
+  oauthTokenPlan.includes("oauth_tokens_token_hash_unique"),
+  indexNames(oauthTokenPlan),
+);
+
 // tools/list joins from the profile through the attachment table on every
 // request, so that join must be indexed too.
 const profileToolsPlan = await planFor(

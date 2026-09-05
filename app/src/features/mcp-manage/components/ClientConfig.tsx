@@ -13,6 +13,12 @@ import { useCopy } from "@/features/onboarding/hooks/useCopy";
  *
  * The shape is built here rather than written out per screen, so the
  * dashboard and the onboarding handoff can never drift apart.
+ *
+ * Two shapes, because there are two ways in. A client that lets you set a
+ * header takes the token form. A client that only accepts a URL -- Claude's
+ * custom connectors, VS Code -- gets the same endpoint with no credential at
+ * all and discovers OAuth from the 401. Both are real answers, so both are
+ * offered rather than picking one and hiding the other.
  */
 interface ClientConfigProps {
   endpoint: string;
@@ -24,6 +30,8 @@ interface ClientConfigProps {
   defaultOpen?: boolean;
 }
 
+type Mode = "token" | "oauth";
+
 export function ClientConfig({
   endpoint,
   token,
@@ -33,6 +41,7 @@ export function ClientConfig({
 }: ClientConfigProps) {
   const [open, setOpen] = useState(defaultOpen);
   const [revealed, setRevealed] = useState(false);
+  const [mode, setMode] = useState<Mode>("token");
   const { copied, copy } = useCopy();
 
   // Slugified so the key is valid in every client's config format.
@@ -58,6 +67,20 @@ export function ClientConfig({
       2,
     );
 
+  /**
+   * The OAuth form: the same endpoint, and nothing else.
+   *
+   * There is deliberately no credential here. The client hits the endpoint,
+   * gets a 401 pointing at our metadata, registers itself, and sends the user
+   * through the browser. Adding a placeholder token field would suggest a step
+   * that does not exist.
+   */
+  const oauthJson = JSON.stringify(
+    { mcpServers: { [key]: { type: "http", url: endpoint } } },
+    null,
+    2,
+  );
+
   // Masked on screen, real on copy. Showing the token here would undo the
   // masking on the field above, since this block sits directly beneath it.
   const separator = token.indexOf("_");
@@ -65,8 +88,9 @@ export function ClientConfig({
     ? `${token.slice(0, separator >= 0 ? separator + 3 : 3)}${"•".repeat(24)}`
     : "";
 
-  const json = build(token);
-  const shown = revealed ? json : build(maskedToken);
+  const isOAuth = mode === "oauth";
+  const json = isOAuth ? oauthJson : build(token);
+  const shown = isOAuth ? oauthJson : revealed ? json : build(maskedToken);
 
   return (
     <div className={cn("surface-flat overflow-hidden rounded-lg", className)}>
@@ -92,51 +116,113 @@ export function ClientConfig({
       </button>
 
       {open ? (
-        <div className="relative border-t">
-          {/* Absolute so the buttons do not push the code block's layout
-              around, and the JSON stays the thing you are looking at. */}
-          <div className="absolute top-2 right-2 flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() => setRevealed((current) => !current)}
-              aria-label={revealed ? "Hide token" : "Show token"}
-              title={revealed ? "Hide token" : "Show token"}
-            >
-              {revealed ? <EyeOffIcon /> : <EyeIcon />}
-            </Button>
+        <div className="border-t">
+          {/* Which credential the client will use. Two real options, not a
+              preference: some clients cannot send a header at all. */}
+          <div className="flex items-center gap-1 border-b px-3 py-2">
+            <ModeTab active={!isOAuth} onClick={() => setMode("token")}>
+              Token
+            </ModeTab>
+            <ModeTab active={isOAuth} onClick={() => setMode("oauth")}>
+              Sign-in
+            </ModeTab>
 
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              // Always copies the real config, masked or not.
-              onClick={() => void copy(json)}
-              aria-label={copied ? "Copied" : "Copy client config"}
-            >
-              <span className="grid *:col-start-1 *:row-start-1">
-                <CopyIcon
-                  className="transition-[opacity,transform] duration-[var(--duration-fast)]"
-                  style={{
-                    opacity: copied ? 0 : 1,
-                    transform: copied ? "scale(0.7)" : "scale(1)",
-                  }}
-                />
-                <CheckIcon
-                  className="transition-[opacity,transform] duration-[var(--duration-fast)]"
-                  style={{
-                    opacity: copied ? 1 : 0,
-                    transform: copied ? "scale(1)" : "scale(0.7)",
-                  }}
-                />
-              </span>
-            </Button>
+            <span className="ml-auto text-xs text-text-quaternary">
+              {isOAuth ? "Claude, VS Code" : "Cursor, scripts"}
+            </span>
           </div>
 
-          <pre className="overflow-x-auto px-3 py-3 text-xs leading-relaxed">
-            <code className="font-mono">{shown}</code>
-          </pre>
+          <div className="relative">
+            {/* Absolute so the buttons do not push the code block's layout
+                around, and the JSON stays the thing you are looking at. */}
+            <div className="absolute top-2 right-2 flex items-center gap-1">
+              {isOAuth ? null : (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  onClick={() => setRevealed((current) => !current)}
+                  aria-label={revealed ? "Hide token" : "Show token"}
+                  title={revealed ? "Hide token" : "Show token"}
+                >
+                  {revealed ? <EyeOffIcon /> : <EyeIcon />}
+                </Button>
+              )}
+
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                // Always copies the real config, masked or not.
+                onClick={() => void copy(json)}
+                aria-label={copied ? "Copied" : "Copy client config"}
+              >
+                <span className="grid *:col-start-1 *:row-start-1">
+                  <CopyIcon
+                    className="transition-[opacity,transform] duration-[var(--duration-fast)]"
+                    style={{
+                      opacity: copied ? 0 : 1,
+                      transform: copied ? "scale(0.7)" : "scale(1)",
+                    }}
+                  />
+                  <CheckIcon
+                    className="transition-[opacity,transform] duration-[var(--duration-fast)]"
+                    style={{
+                      opacity: copied ? 1 : 0,
+                      transform: copied ? "scale(1)" : "scale(0.7)",
+                    }}
+                  />
+                </span>
+              </Button>
+            </div>
+
+            <pre className="overflow-x-auto px-3 py-3 text-xs leading-relaxed">
+              <code className="font-mono">{shown}</code>
+            </pre>
+          </div>
+
+          <p className="border-t px-3 py-2 text-xs text-text-tertiary">
+            {isOAuth ? (
+              <>
+                No token needed. Paste just the URL — the client opens a browser
+                sign-in and you pick which profile it sees.
+              </>
+            ) : (
+              <>
+                Works anywhere you can set a header. The token exposes this
+                profile only.
+              </>
+            )}
+          </p>
         </div>
       ) : null}
     </div>
+  );
+}
+
+/** A tab in the credential switcher. Quiet until selected. */
+function ModeTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded-md px-2 py-1 text-xs font-medium",
+        "transition-colors duration-[var(--duration-quick)]",
+        "focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring",
+        active
+          ? "bg-secondary text-secondary-foreground"
+          : "text-text-tertiary hover:bg-accent/40 hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }

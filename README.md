@@ -39,7 +39,15 @@ For production, see [Deploying](#deploying-to-dokploy).
 
 1. **Register** and name your company. That mints your gateway token.
 2. **Connect** MCP servers from the catalog, or paste any `http(s)` endpoint.
-3. **Point your AI client** at `https://your-host/mcp` with that token.
+3. **Point your AI client** at `https://your-host/mcp`.
+
+### Two ways to authenticate
+
+Clients differ in what they can send, so the endpoint accepts both. Same URL,
+same tools; only the credential differs.
+
+**A profile token**, for anything that lets you set a header — Cursor, scripts,
+CI:
 
 ### Managed OAuth
 
@@ -81,6 +89,33 @@ entry with an `integration_key`.
   }
 }
 ```
+
+**OAuth**, for clients that only accept a URL. Claude's "Add custom connector"
+dialog has one field and no place to put a token; VS Code is the same. Those
+clients get the endpoint on its own:
+
+```json
+{
+  "mcpServers": {
+    "sirup": { "type": "http", "url": "https://your-host/mcp" }
+  }
+}
+```
+
+The client then discovers everything else on its own: it calls the endpoint,
+gets a `401` carrying a `resource_metadata` pointer, reads the metadata,
+registers itself, and opens a browser where you choose which profile it may
+see. No token is ever copied or pasted.
+
+That flow is OAuth 2.1 with PKCE, implemented against the MCP authorization
+spec — RFC 8414 metadata, RFC 7591 dynamic client registration, RFC 9728
+protected resource metadata, and RFC 8707 resource indicators. Access tokens
+last an hour, refresh tokens rotate on every use, and replaying a rotated one
+revokes the whole grant. Authorized clients are listed in the dashboard and can
+be revoked there.
+
+Both paths resolve to exactly one profile, so a client — however it
+authenticated — sees precisely the tools that profile exposes and nothing else.
 
 ### Tool namespacing
 
@@ -244,6 +279,9 @@ written for it.
    ```
    `JWT_SECRET` and `POSTGRES_PASSWORD` are declared `${VAR:?}`, so a deploy
    fails loudly rather than silently booting with insecure defaults.
+   `APP_ORIGIN` must be the https URL users actually reach: it is both the
+   callback origin for outbound OAuth and the issuer MCP clients compare
+   literally when authenticating to your endpoint.
 3. **Domains tab** — add your domain, service `app`, port `3000`. Dokploy
    injects the Traefik labels and attaches `dokploy-network` itself, which is
    why neither appears in the compose file.
@@ -278,8 +316,11 @@ Notes on the setup:
 
 `npm test` covers: strict type checking, build/deploy preflight, connection
 config, encrypted OAuth state, an end-to-end run against a live MCP server,
-regressions, keyset pagination correctness, upstream connection reuse, database-side timestamps,
-index usage via `EXPLAIN` on 43k seeded rows, and the dual-purpose `/mcp` route.
+regressions, keyset pagination correctness, upstream connection reuse,
+database-side timestamps, index usage via `EXPLAIN` on 43k seeded rows, the
+dual-purpose `/mcp` route, and a full inbound OAuth 2.1 flow (discovery,
+dynamic registration, PKCE, consent, token exchange, refresh rotation, and
+revocation).
 
 ## Configuration
 
@@ -290,7 +331,7 @@ provider credentials and encryption key. See `.env.example`.
 | --- | --- | --- |
 | `PORT` | `5173` locally, `3000` in the image | |
 | `JWT_SECRET` | ephemeral | **Required in production** |
-| `APP_ORIGIN` | local app URL in dev | Required for managed OAuth in production |
+| `APP_ORIGIN` | local app URL in dev | **Required in production.** Outbound OAuth callbacks, and the issuer/resource identifier for inbound OAuth |
 | `CREDENTIAL_ENCRYPTION_KEY` | — | 32-byte base64 or 64-char hex key; required for managed OAuth |
 | `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | - | Enables Gmail, Drive, Sheets, Docs, and Slides |
 | `PGHOST` / `PGPORT` / `PGUSER` / `PGPASSWORD` / `PGDATABASE` | — | Preferred; what compose uses |
