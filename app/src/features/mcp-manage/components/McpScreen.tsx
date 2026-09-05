@@ -200,7 +200,7 @@ export function McpScreen() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pt-3 pb-8 sm:px-6">
       {/* ── Your endpoint: the thing you came here to copy ─────────────── */}
       <section className="surface flex flex-col gap-4 rounded-2xl bg-card p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

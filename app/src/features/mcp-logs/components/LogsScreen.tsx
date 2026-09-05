@@ -44,7 +44,7 @@ export function LogsScreen() {
   return (
     // Wider than the other screens: six columns of tabular data need the room,
     // and at max-w-4xl the last one was being squeezed off the card.
-    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 pt-3 pb-8 sm:px-6">
       <header className="flex flex-col gap-1">
         <h1 className="text-lg font-semibold tracking-tight">Logs</h1>
         <p className="text-sm text-text-tertiary">

@@ -12,7 +12,7 @@ import { Wordmark } from "@/components/Logo";
 
 /**
  * COMPONENT (stateless) -- the persistent shell: profile at the top, sections
- * in the middle, settings at the bottom.
+ * in the middle, account actions at the bottom.
  */
 const NAV = [
   { to: "/mcp", label: "MCP servers", icon: BlocksIcon },
@@ -21,7 +21,7 @@ const NAV = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
-  const { user, company, signOut } = useSession();
+  const { company, signOut } = useSession();
 
   async function handleSignOut() {
     await signOut();
@@ -64,19 +64,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         <Separator />
 
-        <div className="flex flex-col gap-2 p-3">
-          <div className="flex items-center justify-between gap-2 px-1">
-            <span className="truncate text-xs text-text-tertiary" title={user?.email}>
-              {user?.email}
-            </span>
-            <ThemeToggle className="shrink-0" />
-          </div>
-
+        <div className="p-3">
           <Button
             variant="ghost"
             size="sm"
             onClick={() => void handleSignOut()}
-            className="justify-start text-text-tertiary"
+            className="w-full justify-start text-text-tertiary"
           >
             <LogOutIcon data-icon="inline-start" />
             Sign out
@@ -85,7 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Mobile header: the sidebar collapses away below md. */}
+        {/* Mobile: the sidebar collapses away below md, so nav moves up here. */}
         <header className="theme-surface flex shrink-0 items-center justify-between border-b px-4 py-3 md:hidden">
           <Wordmark />
           <div className="flex items-center gap-1">
@@ -106,6 +99,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
+
+        {/* Desktop: a thin bar for page-level controls, top-right. A real row
+            rather than a floating overlay, so it can never sit on top of page
+            content -- the dashboard's own Connect button lives in that corner. */}
+        <div className="hidden shrink-0 items-center justify-end px-4 pt-3 md:flex">
+          <ThemeToggle />
+        </div>
 
         {/* The only scroll container. Keeping it here rather than on the page
             means the sidebar never moves, whatever the content height. */}
