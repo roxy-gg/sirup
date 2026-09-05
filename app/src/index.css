@@ -571,18 +571,6 @@
   transform: scale(0.92);
 }
 
-/* The star nudges up on hover — a small "this is worth clicking" cue on the one
-   link that leaves the site. Gated to fine pointers: on touch, :hover sticks
-   after the finger lifts and the star would stay parked in its hover state. */
-@media (hover: hover) and (pointer: fine) {
-  .s-ghstar {
-    transition: transform var(--duration-quick) var(--ease-smooth-out);
-  }
-  .s-ghlink:hover .s-ghstar {
-    transform: translateY(-1px) scale(1.15);
-  }
-}
-
 /* Brand switcher.
 
    The chevron flips to point up while the menu is open, so the control says
@@ -617,12 +605,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .s-mark,
-  .s-ghstar,
   .s-brand-trigger svg {
     transition: none;
   }
-  .s-logo-link:active .s-mark,
-  .s-ghlink:hover .s-ghstar {
+  .s-logo-link:active .s-mark {
     transform: none;
   }
   .s-brand-menu {

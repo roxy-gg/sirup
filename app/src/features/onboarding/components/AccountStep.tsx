@@ -13,10 +13,22 @@ interface AccountStepProps {
   onSubmit: (mode: AuthMode, email: string, password: string) => void;
   isSubmitting: boolean;
   error: string | null;
+  /**
+   * Which form to open on. Register is the default because most arrivals are
+   * new, but a visitor who clicked a link labelled "Sign in" has stated their
+   * intent -- landing them on "Create your account" makes them undo a step
+   * before they can do the thing they asked for.
+   */
+  initialMode?: AuthMode;
 }
 
-export function AccountStep({ onSubmit, isSubmitting, error }: AccountStepProps) {
-  const [mode, setMode] = useState<AuthMode>("register");
+export function AccountStep({
+  onSubmit,
+  isSubmitting,
+  error,
+  initialMode = "register",
+}: AccountStepProps) {
+  const [mode, setMode] = useState<AuthMode>(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 

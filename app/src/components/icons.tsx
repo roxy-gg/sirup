@@ -9,7 +9,6 @@ import type { SVGProps } from "react";
  * single solid fills, so they inherit `currentColor` and sit on the same
  * optical weight as their label.
  */
-
 /** GitHub "octocat" mark. Identical to the one roxy.gg's nav ships. */
 export function GithubIcon(props: SVGProps<SVGSVGElement>) {
   return (
@@ -22,7 +21,8 @@ export function GithubIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
-/** Filled star, for the stargazer count beside the GitHub link. */
+/** Filled star. Unused while the nav's star badge is hidden -- see
+ *  useRepoStats.ts for why it is kept rather than deleted. */
 export function StarIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true" {...props}>
