@@ -192,6 +192,10 @@ export async function attach(
 ): Promise<void> {
   const profile = await data.findProfile(userId, profileId);
   if (!profile) throw ApiError.notFound("Profile not found.");
+  const owned = await listServers(userId);
+  if (!owned.some((server) => server.id === serverId)) {
+    throw ApiError.notFound("Server not found.");
+  }
   await data.attachServer(profileId, serverId);
 }
 

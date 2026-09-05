@@ -11,7 +11,7 @@ import { REPO_URL } from "../hooks/useRepoStats";
  *
  * Deliberately one screen of copy and one call to action. Every number on it
  * is read from the live catalog, so the claims cannot drift from what the
- * product actually does -- including the honest one about OAuth.
+ * product actually does -- including which OAuth integrations are configured.
  */
 export function LandingScreen() {
   const { visible, total, connectable, status } = useLandingApps();
@@ -89,9 +89,9 @@ export function LandingScreen() {
               <>
                 The catalog has <strong className="text-foreground">{total} apps</strong>.{" "}
                 <strong className="text-foreground">{connectable}</strong> connect
-                right now with an API key — GitHub, Stripe, Supabase, Cloudflare,
-                and others. The rest need a browser sign-in flow we haven&rsquo;t
-                built yet, and they&rsquo;re marked as such rather than hidden.
+                right now with configured sign-in flows or API keys. Integrations
+                that still need setup or a reviewed OAuth flow are marked
+                unavailable.
               </>
             ) : (
               <>Loading the catalog…</>

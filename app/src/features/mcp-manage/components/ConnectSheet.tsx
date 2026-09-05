@@ -25,7 +25,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { ScrollArea } from "@/components/ScrollArea";
 import { cn } from "@/lib/utils";
 import type { ConnectServerBody } from "@shared/api";
-import type { AuthType, CatalogEntry, McpServerWithTools } from "@shared/domain";
+import type { CatalogEntry, McpServerWithTools, StaticAuthType } from "@shared/domain";
 
 /**
  * COMPONENT -- the connect flow, in a right-side sheet.
@@ -83,7 +83,7 @@ export function ConnectSheet({
   const [phase, setPhase] = useState<Phase>("configure");
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
-  const [authType, setAuthType] = useState<AuthType>("none");
+  const [authType, setAuthType] = useState<StaticAuthType>("none");
   const [headerName, setHeaderName] = useState("");
   const [authValue, setAuthValue] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -101,7 +101,8 @@ export function ConnectSheet({
     setPhase("configure");
     setName(app && !isCustom ? suggestLabel(app.name, existingNames) : "");
     setUrl(app?.url ?? "");
-    setAuthType(app?.auth_type ?? "none");
+    // OAuth apps never reach this sheet; fall back to a safe static default.
+    setAuthType(app?.auth_type === "oauth" ? "none" : (app?.auth_type ?? "none"));
     setHeaderName(app?.auth_header_name ?? "");
     setAuthValue("");
     setError(null);
@@ -365,7 +366,7 @@ export function ConnectSheet({
                 <FieldLabel htmlFor="connect-auth">Authentication method</FieldLabel>
                 <Select
                   value={authType}
-                  onValueChange={(value) => setAuthType(value as AuthType)}
+                  onValueChange={(value) => setAuthType(value as StaticAuthType)}
                 >
                   <SelectTrigger id="connect-auth">
                     <SelectValue />

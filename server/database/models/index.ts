@@ -1,6 +1,6 @@
 import type { Model, RelationMappings } from "objection";
 import { BaseModel } from "./BaseModel.js";
-import type { Uuid } from "../../../shared/domain.js";
+import type { AuthType, Uuid } from "../../../shared/domain.js";
 
 export class CompanyModel extends BaseModel {
   name!: string;
@@ -111,7 +111,8 @@ export class McpServerModel extends BaseModel {
   name!: string;
   slug!: string;
   url!: string;
-  auth_type!: "none" | "bearer" | "header";
+  integration_key!: string | null;
+  auth_type!: AuthType;
   auth_header_name!: string | null;
   auth_value!: string | null;
   status!: "pending" | "connected" | "error";
@@ -130,7 +131,9 @@ export class McpServerModel extends BaseModel {
   /** Credentials stay server-side; the UI only needs to know one exists. */
   override $formatJson(json: Record<string, unknown>): Record<string, unknown> {
     const formatted = super.$formatJson(json);
-    formatted.has_auth = Boolean(formatted.auth_value);
+    // OAuth rows are only created after a grant is stored transactionally.
+    formatted.has_auth =
+      formatted.auth_type === "oauth" || Boolean(formatted.auth_value);
     delete formatted.auth_value;
     return formatted;
   }
@@ -160,6 +163,58 @@ export class McpServerModel extends BaseModel {
         },
       },
     };
+  }
+}
+
+/** Encrypted, long-lived OAuth grant for one connected account. */
+export class McpOAuthCredentialModel extends BaseModel {
+  server_id!: Uuid;
+  integration_key!: string;
+  encrypted_tokens!: string;
+  granted_scopes!: string | null;
+  discovery_state!: Record<string, unknown> | null;
+  reauthorization_required!: boolean;
+  authorized_at!: Date;
+
+  static override get tableName(): string {
+    return "mcp_oauth_credentials";
+  }
+
+  static override get idColumn(): string {
+    return "server_id";
+  }
+
+  override $formatJson(json: Record<string, unknown>): Record<string, unknown> {
+    const formatted = super.$formatJson(json);
+    delete formatted.encrypted_tokens;
+    return formatted;
+  }
+}
+
+/** Short-lived PKCE/state transaction used while a browser is at the provider. */
+export class McpOAuthRequestModel extends BaseModel {
+  user_id!: Uuid;
+  company_id!: Uuid;
+  profile_id!: Uuid;
+  integration_key!: string;
+  connection_name!: string;
+  state_hash!: string;
+  browser_nonce_hash!: string;
+  encrypted_code_verifier!: string | null;
+  discovery_state!: Record<string, unknown> | null;
+  expires_at!: Date;
+  consumed_at!: Date | null;
+
+  static override get tableName(): string {
+    return "mcp_oauth_requests";
+  }
+
+  override $formatJson(json: Record<string, unknown>): Record<string, unknown> {
+    const formatted = super.$formatJson(json);
+    delete formatted.state_hash;
+    delete formatted.browser_nonce_hash;
+    delete formatted.encrypted_code_verifier;
+    return formatted;
   }
 }
 

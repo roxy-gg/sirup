@@ -3,10 +3,12 @@ import fs from "node:fs";
 import * as si from "simple-icons";
 import { Checks } from "./_harness.js";
 import { listCatalog } from "../server/features/mcp-catalog/mcpCatalog.data.js";
+import { publicCatalog } from "../server/features/mcp-catalog/mcpCatalog.logic.js";
 
 const t = new Checks("Catalog integrity");
 
 const catalog = listCatalog();
+const decorated = publicCatalog();
 t.check("catalog has a useful number of apps", catalog.length >= 40, catalog.length);
 
 // A broken slug renders an empty box, which looks like a bug to a user.
@@ -43,19 +45,41 @@ t.check(
   badHeader.map((e) => e.key).join(", "),
 );
 
-// OAuth entries must not preselect a credential field the user cannot fill.
-const badOauth = catalog.filter(
-  (entry) => entry.auth === "oauth" && entry.auth_type !== "none",
+const gmail = catalog[0];
+t.check("Gmail is first in the catalog", gmail?.key === "gmail", gmail?.key);
+t.check(
+  "Gmail uses the managed OAuth integration",
+  gmail?.auth === "oauth" &&
+    gmail.auth_type === "oauth" &&
+    gmail.integration_key === "gmail",
 );
 t.check(
-  "oauth apps do not ask for a static credential",
+  "Gmail availability follows deployment configuration",
+  decorated[0]?.connect_mode ===
+    (process.env.CREDENTIAL_ENCRYPTION_KEY &&
+    process.env.GOOGLE_OAUTH_CLIENT_ID &&
+    process.env.GOOGLE_OAUTH_CLIENT_SECRET
+      ? "oauth"
+      : "unavailable"),
+  decorated[0]?.connect_mode,
+);
+
+// OAuth entries without a managed integration must never masquerade as direct
+// connections that ask for static credentials.
+const badOauth = catalog.filter(
+  (entry) =>
+    entry.auth === "oauth" &&
+    (entry.integration_key ? entry.auth_type !== "oauth" : entry.auth_type !== "none"),
+);
+t.check(
+  "oauth entries use an explicit managed integration or remain unavailable",
   badOauth.length === 0,
   badOauth.map((e) => e.key).join(", "),
 );
 
-const connectable = catalog.filter((entry) => entry.auth !== "oauth").length;
+const managedOauth = catalog.filter((entry) => entry.integration_key).length;
 console.log(
-  `\n  ${connectable} connectable today, ${catalog.length - connectable} awaiting OAuth\n`,
+  `\n  ${managedOauth} managed OAuth integration, ${catalog.length} catalog entries\n`,
 );
 
 // The frontend renders icons from a generated map; keep it in sync.

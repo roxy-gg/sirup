@@ -6,6 +6,7 @@ import { mcpLogsRouter } from "../features/mcp-logs/mcpLogs.route.js";
 import { mcpCatalogRouter } from "../features/mcp-catalog/mcpCatalog.route.js";
 import { publicCatalog } from "../features/mcp-catalog/mcpCatalog.logic.js";
 import { getRepoStats } from "../features/github/github.data.js";
+import { oauthIntegrationsRouter } from "../integrations/oauth.route.js";
 import { notFoundHandler } from "../middleware/errorHandler.js";
 
 /**
@@ -40,6 +41,7 @@ apiRouter.use("/profiles", profilesRouter);
 apiRouter.use("/mcp-servers", mcpServersRouter);
 apiRouter.use("/mcp-logs", mcpLogsRouter);
 apiRouter.use("/mcp-catalog", mcpCatalogRouter);
+apiRouter.use("/integrations", oauthIntegrationsRouter);
 
 // An unmatched /api/* must 404 as JSON, not fall through to the SPA shell.
 apiRouter.use(notFoundHandler);

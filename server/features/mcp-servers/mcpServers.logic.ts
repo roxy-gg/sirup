@@ -94,6 +94,7 @@ export async function create(
     name: input.name,
     slug,
     url: input.url,
+    integration_key: null,
     auth_type: input.auth_type,
     auth_header_name: input.auth_type === "header" ? input.auth_header_name : null,
     auth_value: input.auth_type === "none" ? null : input.auth_value,
@@ -110,6 +111,18 @@ export async function update(userId: Uuid, serverId: string, payload: unknown) {
   const input = updateSchema.parse(payload);
   const server = await data.findServer(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
+
+  if (
+    server.auth_type === "oauth" &&
+    (input.url !== undefined ||
+      input.auth_type !== undefined ||
+      input.auth_header_name !== undefined ||
+      input.auth_value !== undefined)
+  ) {
+    throw ApiError.badRequest(
+      "OAuth connection details are managed by the integration. Reconnect the account to change them.",
+    );
+  }
 
   const patch: Partial<McpServerModel> = {};
   if (input.name !== undefined) patch.name = input.name;
@@ -135,7 +148,7 @@ export async function update(userId: Uuid, serverId: string, payload: unknown) {
       throw ApiError.badRequest("Provide the credential value for the new auth type.");
     }
   }
-  if (input.auth_type !== undefined) {
+  if (input.auth_type !== undefined || input.auth_value !== undefined) {
     assertAuthShape({ ...server, ...patch } as AuthShape);
   }
 
@@ -159,6 +172,9 @@ export async function remove(userId: Uuid, serverId: string): Promise<void> {
   const server = await data.findServer(userId, serverId);
   if (!server) throw ApiError.notFound("Server not found.");
 
+  // Drop local access immediately. Provider revocation is best effort and
+  // intentionally deferred: Google revocation is grant-wide and may affect a
+  // sibling connection to the same Google account.
   release(serverId);
   await data.deleteServer(userId, serverId);
 }

@@ -48,11 +48,19 @@ t.check(
   exa?.auth_header_name,
 );
 
-const oauthApp = apps.find((app) => app.auth === "oauth");
+const gmail = apps.find((app) => app.key === "gmail");
 t.check(
-  "oauth apps are flagged so the grid can disable them",
-  Boolean(oauthApp),
-  oauthApp?.name,
+  "Gmail advertises its managed OAuth connector",
+  gmail?.auth === "oauth" && gmail.integration_key === "gmail",
+  gmail?.connect_mode,
+);
+const unavailableOauth = apps.find(
+  (app) => app.auth === "oauth" && !app.integration_key,
+);
+t.check(
+  "unsupported OAuth apps remain unavailable",
+  unavailableOauth?.connect_mode === "unavailable",
+  unavailableOauth?.name,
 );
 
 // --- phase 1: connect returns the server WITH its tools ---

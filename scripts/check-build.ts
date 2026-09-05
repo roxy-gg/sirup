@@ -24,6 +24,7 @@ function walk(dir: string, extensions: string[], found: string[] = []): string[]
 }
 
 const pkg = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
+  scripts?: Record<string, string>;
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
 };
@@ -121,6 +122,14 @@ t.check(
   "tsx is a runtime dependency, not a dev dependency",
   Boolean(pkg.dependencies?.tsx),
   pkg.dependencies?.tsx ?? "MISSING",
+);
+
+t.check(
+  "Knex CLI loads the TypeScript config through tsx",
+  /node --import tsx .*knex.*--knexfile knexfile\.ts/.test(
+    String(pkg.scripts?.migrate),
+  ),
+  String(pkg.scripts?.migrate ?? "MISSING"),
 );
 
 // `npm run build` runs `tsc -b`, which type-checks the scripts project too.

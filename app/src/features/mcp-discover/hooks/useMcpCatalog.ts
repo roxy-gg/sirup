@@ -60,6 +60,8 @@ export function useMcpCatalog(refreshKey = 0) {
     setQuery,
     status,
     /** How many apps can actually be connected today, for the header copy. */
-    connectableCount: catalog.filter((entry) => entry.auth !== "oauth").length,
+    connectableCount: catalog.filter(
+      (entry) => entry.connect_mode !== "unavailable",
+    ).length,
   };
 }

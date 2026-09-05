@@ -41,6 +41,35 @@ For production, see [Deploying](#deploying-to-dokploy).
 2. **Connect** MCP servers from the catalog, or paste any `http(s)` endpoint.
 3. **Point your AI client** at `https://your-host/mcp` with that token.
 
+### Managed OAuth
+
+Gmail connects through a managed OAuth integration. One sign-in creates one
+normal sirup connection, so linking several Google accounts gives each account
+its own label, tool namespace, permissions, profile attachments, and
+connection-pool entry — exactly like connecting two API keys.
+
+Before Gmail becomes connectable in the catalog:
+
+1. Enable `gmail.googleapis.com` and `gmailmcp.googleapis.com` in a Google Cloud
+   project enrolled in the Workspace Developer Preview.
+2. Create a Web application OAuth client and register
+   `https://your-host/api/integrations/oauth/callback` as an exact redirect URI.
+3. Configure `APP_ORIGIN`, `CREDENTIAL_ENCRYPTION_KEY`,
+   `GOOGLE_OAUTH_CLIENT_ID`, and `GOOGLE_OAUTH_CLIENT_SECRET`.
+
+The integration requests `https://mail.google.com/` — Gmail's full-access scope
+— so every tool the endpoint advertises actually works. Requesting the narrower
+`gmail.readonly` + `gmail.compose` pair only authorizes 8 of the 23 tools;
+labelling, trashing, and spam all fail without `gmail.modify`. OAuth tokens and
+PKCE verifiers are encrypted at rest with AES-256-GCM; state is hashed,
+single-use, short-lived, and bound to the browser that started the flow.
+
+Note that the Gmail MCP server currently exposes **no send tool** — the closest
+is `create_draft`. That is Google's decision, not a scope we are withholding.
+
+Adding another provider is one file in `server/integrations/` plus a catalog
+entry with an `integration_key`.
+
 ```json
 {
   "mcpServers": {
@@ -59,7 +88,7 @@ Two servers can easily both expose a `search` tool. sirup prefixes every tool
 with its server slug, so the model can tell them apart and names never collide:
 
 ```
-gmail__send_email      linear__search      github__create_issue
+gmail__search_threads  linear__search      github__create_issue
 ```
 
 ### Transports
@@ -105,6 +134,7 @@ server/
 ├── index.ts routes, then /mcp, then the SPA catch-all
 ├── config.ts
 ├── database/               migrations, Objection models
+├── integrations/           managed OAuth providers and encrypted grants
 ├── mcp/                    the aggregator
 │   ├── gatewayRoutes.ts    the public /mcp endpoint
 │   ├── gatewayServer.ts    MCP server exposing aggregated tools
@@ -200,13 +230,20 @@ written for it.
    ```
    JWT_SECRET=<64 random hex chars>
    POSTGRES_PASSWORD=<a strong password>
+   APP_ORIGIN=https://your-host
+   CREDENTIAL_ENCRYPTION_KEY=<64 random hex chars>
+   GOOGLE_OAUTH_CLIENT_ID=<optional; enables Gmail>
+   GOOGLE_OAUTH_CLIENT_SECRET=<optional; enables Gmail>
    ```
-   Generate the secret with:
+   Generate the encryption key independently from `JWT_SECRET`; changing it
+   later makes existing OAuth grants unreadable and requires reconnecting them.
+   The Google variables are optional when Gmail is not enabled. Generate a
+   secret with:
    ```bash
    node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
    ```
-   Both are declared `${VAR:?}`, so a deploy fails loudly rather than silently
-   booting with a default.
+   `JWT_SECRET` and `POSTGRES_PASSWORD` are declared `${VAR:?}`, so a deploy
+   fails loudly rather than silently booting with insecure defaults.
 3. **Domains tab** — add your domain, service `app`, port `3000`. Dokploy
    injects the Traefik labels and attaches `dokploy-network` itself, which is
    why neither appears in the compose file.
@@ -240,18 +277,22 @@ Notes on the setup:
 | `npm run seed:demo` | Demo account with servers connected |
 
 `npm test` covers: strict type checking, build/deploy preflight, connection
-config, an end-to-end run against a live MCP server, regressions, keyset
-pagination correctness, upstream connection reuse, database-side timestamps,
+config, encrypted OAuth state, an end-to-end run against a live MCP server,
+regressions, keyset pagination correctness, upstream connection reuse, database-side timestamps,
 index usage via `EXPLAIN` on 43k seeded rows, and the dual-purpose `/mcp` route.
 
 ## Configuration
 
-Every value has a working default in dev. See `.env.example`.
+The core app has working defaults in development. Managed OAuth requires its
+provider credentials and encryption key. See `.env.example`.
 
 | Variable | Default | Notes |
 | --- | --- | --- |
 | `PORT` | `5173` locally, `3000` in the image | |
 | `JWT_SECRET` | ephemeral | **Required in production** |
+| `APP_ORIGIN` | local app URL in dev | Required for managed OAuth in production |
+| `CREDENTIAL_ENCRYPTION_KEY` | — | 32-byte base64 or 64-char hex key; required for managed OAuth |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | - | Enables Gmail, Drive, Sheets, Docs, and Slides |
 | `PGHOST` / `PGPORT` / `PGUSER` / `PGPASSWORD` / `PGDATABASE` | — | Preferred; what compose uses |
 | `DATABASE_URL` | `postgres://sirup:sirup@localhost:5432/sirup` | Fallback when `PGHOST` is unset |
 | `DATABASE_SSL` | `false` | `true` only for a managed provider |
@@ -270,9 +311,9 @@ and the audit log.
 
 Not built yet, and worth being honest about:
 
-- **OAuth for upstreams.** Only static credentials (bearer or custom header) are
-  supported. Servers like Gmail that need an authorization-code flow can't be
-  connected end-to-end yet. This is the biggest gap.
+- **Generic OAuth for upstreams.** The five Google Workspace apps have managed
+  OAuth integrations with encrypted per-account grants. Other OAuth providers
+  still need an explicit, reviewed integration before they can be connected.
 - **Teams.** One user per company. No invites or roles.
 - **Skills.** The nav entry is a placeholder. Skills-over-MCP is still an open
   working group at the MCP project, and guessing at the shape now would mean

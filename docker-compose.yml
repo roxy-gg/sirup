@@ -67,6 +67,10 @@ services:
       # Same-host Postgres over a private Docker network; TLS adds nothing here.
       DATABASE_SSL: "false"
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in the Dokploy environment}
+      APP_ORIGIN: ${APP_ORIGIN:-}
+      CREDENTIAL_ENCRYPTION_KEY: ${CREDENTIAL_ENCRYPTION_KEY:-}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       UPSTREAM_TIMEOUT_MS: ${UPSTREAM_TIMEOUT_MS:-30000}
 
     # `expose`, not `ports`: Traefik reaches this over the Docker network, so
