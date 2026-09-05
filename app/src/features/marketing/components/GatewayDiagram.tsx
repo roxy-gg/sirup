@@ -15,7 +15,7 @@ import type { CatalogEntry } from "@shared/domain";
  */
 
 /** The MCP clients people actually point at a gateway. */
-const CLIENTS = ["Claude Code", "Codex CLI", "Cursor", "VS Code", "Zed"] as const;
+const CLIENTS = ["Claude Code", "Codex CLI", "Cursor", "VS Code", "Roxy"] as const;
 
 export interface RotatingApp extends CatalogEntry {
   slot: number;
