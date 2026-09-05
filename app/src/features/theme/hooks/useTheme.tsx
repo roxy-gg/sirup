@@ -36,6 +36,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // every unrelated class change.
     root.classList.add("theme-switching");
     root.classList.toggle("dark", next === "dark");
+    // Keep the pre-paint inline styles from index.html in sync, so a reload
+    // after switching doesn't flash the previous theme.
+    root.style.backgroundColor = next === "dark" ? "#08090a" : "#ffffff";
+    root.style.colorScheme = next;
     localStorage.setItem(STORAGE_KEY, next);
     setThemeState(next);
 
@@ -51,7 +55,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const onChange = (event: MediaQueryListEvent) => {
       if (localStorage.getItem(STORAGE_KEY)) return;
-      document.documentElement.classList.toggle("dark", event.matches);
+      const root = document.documentElement;
+      root.classList.toggle("dark", event.matches);
+      root.style.backgroundColor = event.matches ? "#08090a" : "#ffffff";
+      root.style.colorScheme = event.matches ? "dark" : "light";
       setThemeState(event.matches ? "dark" : "light");
     };
     media.addEventListener("change", onChange);

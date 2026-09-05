@@ -6,7 +6,10 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
+        // Linear's cards are flatter than shadcn's default: a hairline border
+        // does the separating, and the shadow is barely there. A heavy shadow
+        // on a grey UI reads as muddy rather than elevated.
+        "flex flex-col gap-6 rounded-xl border bg-card py-5 text-card-foreground shadow-[var(--shadow-tiny)]",
         className
       )}
       {...props}

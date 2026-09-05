@@ -10,11 +10,19 @@
     />
     <script>
       // Applied before first paint so a dark-mode reload never flashes white.
+      // The inline background matches --background in index.css; without it
+      // the browser paints its own white for a frame before the CSS lands.
       (() => {
         const stored = localStorage.getItem("sirup-theme");
         const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        if (stored === "dark" || (!stored && prefersDark)) {
+        const isDark = stored === "dark" || (!stored && prefersDark);
+        if (isDark) {
           document.documentElement.classList.add("dark");
+          document.documentElement.style.backgroundColor = "#08090a";
+          document.documentElement.style.colorScheme = "dark";
+        } else {
+          document.documentElement.style.backgroundColor = "#ffffff";
+          document.documentElement.style.colorScheme = "light";
         }
       })();
     </script>
