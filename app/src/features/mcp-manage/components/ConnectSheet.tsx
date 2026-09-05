@@ -264,7 +264,7 @@ export function ConnectSheet({
                       <li key={tool.id}>
                         <label
                           className={cn(
-                            "flex cursor-pointer items-start gap-3 rounded-lg py-3 pr-2 transition-colors",
+                            "flex items-start gap-3 rounded-lg py-3 pr-2 transition-colors",
                             "hover:bg-accent/50",
                           )}
                         >

@@ -287,6 +287,38 @@
 }
 
 @layer base {
+  /* Tailwind v4 dropped the `cursor: pointer` its v3 preflight applied to
+     buttons, matching the raw browser default instead. That default is wrong
+     for an app: anything clickable should say so on hover, and adding the
+     class to every control by hand guarantees some get missed.
+     
+     `:not(:disabled)` matters -- a disabled control that still shows a pointer
+     is telling the user to click something that will not respond. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="option"],
+  a[href],
+  label[for],
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  input[type="submit"]:not(:disabled),
+  input[type="button"]:not(:disabled),
+  input[type="reset"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  /* Anything explicitly disabled gets the not-allowed cursor, whether it is a
+     real disabled attribute or an ARIA one on a div-based control. */
+  button:disabled,
+  [aria-disabled="true"],
+  [data-disabled] {
+    cursor: not-allowed;
+  }
+
   /* Sub-pixel borders are spec'd, not a hack: CSS Values 4 "snap a length as
      a line width" rounds up only *below* one device pixel, so 0.5px renders
      as a true half-pixel line on a 2x display. It is what stops a 1px border

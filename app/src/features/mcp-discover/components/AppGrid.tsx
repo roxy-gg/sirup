@@ -97,6 +97,8 @@ function AppRow({
         // twitch as the pointer crossed it, which reads as noise on a list
         // this dense.
         "transition-colors duration-[var(--duration-quick)]",
+        // The row is only clickable when the app can actually be connected,
+        // so the pointer is conditional -- the base rule cannot know that.
         interactive && "cursor-pointer hover:bg-accent/40",
         interactive &&
           "focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-none",

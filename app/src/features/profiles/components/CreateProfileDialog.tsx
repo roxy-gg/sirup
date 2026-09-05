@@ -121,7 +121,7 @@ export function CreateProfileDialog({
                 {servers.servers.map((server) => (
                   <label
                     key={server.id}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-md py-2 pr-2 transition-colors hover:bg-accent/40"
+                    className="flex items-center gap-2.5 rounded-md py-2 pr-2 transition-colors hover:bg-accent/40"
                   >
                     <Checkbox
                       checked={selected.has(server.id)}
