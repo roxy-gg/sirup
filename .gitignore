@@ -6,8 +6,11 @@ dist
 .DS_Store
 *.log
 
-# Local Postgres data dir created by scripts/pg-dev.js
+# Local Postgres data dir created by scripts/pg-dev.ts
 .pgdata
+
+# TypeScript incremental build cache
+*.tsbuildinfo
 
 # Agent workspace
 .roxy

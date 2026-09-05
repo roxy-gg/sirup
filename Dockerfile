@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # ─── Build ────────────────────────────────────────────────────────────────
-# Compiles the React app. Kept separate so build-only dependencies (Vite,
-# Tailwind) never reach the runtime image.
+# Compiles the React app and type-checks the whole repo. Kept separate so
+# build-only dependencies (Vite, Tailwind, typescript) never reach the runtime
+# image.
 FROM node:22-alpine AS build
 
 WORKDIR /app
@@ -13,6 +14,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# `npm run build` runs `tsc -b` first, so a type error fails the image build
+# rather than shipping and breaking at runtime.
 RUN npm run build
 
 # ─── Runtime ──────────────────────────────────────────────────────────────
@@ -31,13 +35,22 @@ RUN apk add --no-cache tini
 WORKDIR /app
 
 # Production dependencies only. `npm ci --omit=dev` respects the lockfile, so
-# the runtime image matches what was built.
+# the runtime image matches what was built. tsx is a runtime dependency
+# because the server is executed straight from TypeScript.
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
-# Server code, migrations, and the compiled frontend.
+# The server runs from source via tsx, so the TypeScript sources ship rather
+# than a compiled bundle. tsconfig files come along because tsx reads the
+# compiler options (notably the path aliases) at load time.
 COPY server ./server
-COPY knexfile.js ./
+COPY shared ./shared
+COPY knexfile.ts ./
+# All four: the root tsconfig references the others, and tsx reads the
+# compiler options from it at load time.
+COPY tsconfig.json tsconfig.base.json tsconfig.server.json tsconfig.app.json tsconfig.scripts.json ./
+
+# The compiled frontend from the build stage.
 COPY --from=build /app/dist ./dist
 
 # Run unprivileged. The node image ships a `node` user for exactly this.
@@ -47,8 +60,8 @@ EXPOSE 3000
 
 # A failing container should be restarted, not left serving errors. This hits
 # the API's own health route, which only answers once Express is listening.
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "server/index.js"]
+CMD ["node", "--import", "tsx", "server/index.ts"]

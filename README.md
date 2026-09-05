@@ -95,22 +95,22 @@ logic holds the rules, data holds every Objection query.
 
 ```
 server/features/mcp-servers/
-├── mcpServers.route.js     HTTP: parse, call logic, respond
-├── mcpServers.logic.js     validation, orchestration
-└── mcpServers.data.js      Objection queries, nothing else
+├── mcpServers.route.ts     HTTP: parse, call logic, respond
+├── mcpServers.logic.ts     validation, orchestration
+└── mcpServers.data.ts      Objection queries, nothing else
 ```
 
 ```
 server/
-├── index.js                API routes, then /mcp, then the SPA catch-all
-├── config.js
+├── index.ts routes, then /mcp, then the SPA catch-all
+├── config.ts
 ├── database/               migrations, Objection models
 ├── mcp/                    the aggregator
-│   ├── gatewayRoutes.js    the public /mcp endpoint
-│   ├── gatewayServer.js    MCP server exposing aggregated tools
-│   ├── aggregator.js       namespacing, fan-out, routing, logging
-│   ├── connectionPool.js   reuses upstream connections
-│   └── upstreamClient.js   connects out, with transport fallback
+│   ├── gatewayRoutes.ts    the public /mcp endpoint
+│   ├── gatewayServer.ts    MCP server exposing aggregated tools
+│   ├── aggregator.ts       namespacing, fan-out, routing, logging
+│   ├── connectionPool.ts   reuses upstream connections
+│   └── upstreamClient.ts   connects out, with transport fallback
 └── features/               auth · mcp-servers · mcp-logs · mcp-catalog
 ```
 
@@ -122,9 +122,9 @@ calls.
 
 ```
 app/src/features/mcp-manage/
-├── components/    stateless UI
+├── components/    stateless UI (.tsx)
 ├── hooks/         state, orchestration
-└── data/          API calls + typedefs
+└── data/          API calls, typed by shared/api.ts
 ```
 
 Screens: `onboarding` · `mcp-manage` · `mcp-discover` · `mcp-logs` · `skills` ·
@@ -132,8 +132,33 @@ Screens: `onboarding` · `mcp-manage` · `mcp-discover` · `mcp-logs` · `skills
 
 ## Stack
 
-React · Express · Objection.js · Knex · Postgres · shadcn/ui · Tailwind v4 ·
-`@modelcontextprotocol/sdk`
+TypeScript · React · Express · Objection.js · Knex · Postgres · shadcn/ui ·
+Tailwind v4 · `@modelcontextprotocol/sdk`
+
+### One API contract, checked on both sides
+
+`shared/` holds the domain types and the HTTP contract, and both the server and
+the browser import them. A route that changes its response shape fails to
+compile until every caller is updated — the mismatch surfaces at build time
+instead of as a runtime `undefined`.
+
+```
+shared/
+├── domain.ts    entities: Company, McpServer, McpTool, McpLog
+└── api.ts       request bodies and response envelopes per endpoint
+```
+
+Renaming one field in `shared/domain.ts` currently produces errors in the
+server, the frontend, and the check scripts simultaneously. That is the point.
+
+Type checking is strict (`noUncheckedIndexedAccess`, `noImplicitOverride`,
+`verbatimModuleSyntax`) and runs as three projects — server, app, scripts —
+behind `npm run typecheck`. `npm run build` runs it first, so a type error
+fails the Docker image build rather than shipping.
+
+The server runs straight from TypeScript via `tsx`, so there is no compile step
+and no `dist/` for the backend. `tsx` is therefore a **runtime** dependency, not
+a dev one.
 
 ### Data model
 
@@ -147,7 +172,7 @@ feed cannot paginate on `id DESC`. It uses a composite `(created_at, id)`
 keyset cursor instead, matched by an index on the same tuple. The cursor is
 base64-encoded and opaque — don't construct one by hand.
 
-Indexes are built against the actual hot paths, and `scripts/check-indexes.js`
+Indexes are built against the actual hot paths, and `scripts/check-indexes.ts`
 runs `EXPLAIN` to prove the planner uses each one rather than trusting that it
 exists:
 
@@ -198,19 +223,21 @@ Notes on the setup:
 
 | Command | Does |
 | --- | --- |
-| `npm run dev` | Everything, one port, with HMR |
-| `npm run build` | Build the React app |
+| `npm run dev` | Everything, one port, with HMR and server auto-restart |
+| `npm run typecheck` | Strict type check across server, app, and scripts |
+| `npm run build` | Type check, then build the React app |
 | `npm start` | Production server |
 | `npm run db:up` / `db:down` | Local Postgres via Docker |
+| `npm run pg:dev` | Local Postgres without Docker (embedded binary) |
 | `npm run migrate` | Run migrations manually |
 | `npm run db:schema` | Print the live schema and indexes |
-| `npm test` | Full suite against a running dev server |
+| `npm test` | Type check plus the full suite, against a running dev server |
 | `npm run seed:demo` | Demo account with servers connected |
 
-`npm test` covers: build/deploy preflight, connection config, an end-to-end run
-against a live MCP server, regressions, keyset pagination correctness, upstream
-connection reuse, database-side timestamps, index usage via `EXPLAIN` on 43k
-seeded rows, and the dual-purpose `/mcp` route.
+`npm test` covers: strict type checking, build/deploy preflight, connection
+config, an end-to-end run against a live MCP server, regressions, keyset
+pagination correctness, upstream connection reuse, database-side timestamps,
+index usage via `EXPLAIN` on 43k seeded rows, and the dual-purpose `/mcp` route.
 
 ## Configuration
 

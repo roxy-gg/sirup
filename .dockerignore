@@ -10,8 +10,8 @@ dist
 .roxy
 .pgdata
 *.log
+*.tsbuildinfo
 README.md
-scripts
 docker-compose.yml
 docker-compose.dev.yml
 Dockerfile

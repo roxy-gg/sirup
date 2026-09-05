@@ -1,0 +1,21 @@
+{
+  /* Path aliases are duplicated here so editors and CLI tools that read the
+     root tsconfig (rather than the referenced projects) resolve "@/..." too.
+     Type checking itself runs through the references below. */
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "noEmit": true,
+    "paths": {
+      "@/*": ["./app/src/*"],
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.server.json" },
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.scripts.json" }
+  ]
+}

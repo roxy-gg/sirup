@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    /* Strict, and then some. The whole point of adopting TypeScript here is to
+       catch the class of bug this codebase already hit -- a Date compared with
+       ===, an id that changed from number to string. Loose settings would let
+       those through again. */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": false,
+
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+
+    /* tsx runs the server directly and Vite compiles the frontend, so tsc is
+       only ever used as a type checker -- it never emits. */
+    "noEmit": true
+  }
+}

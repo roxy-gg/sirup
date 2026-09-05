@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": {
+      "@shared/*": ["./shared/*"]
+    }
+  },
+  /* Some checks (check-pool, check-timestamps) import server modules directly,
+     so the server sources are in scope here too. */
+  "include": ["scripts/**/*.ts", "shared/**/*.ts", "server/**/*.ts", "knexfile.ts"]
+}
