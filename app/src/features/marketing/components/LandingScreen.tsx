@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Wordmark } from "@/components/Logo";
-import { ThemeToggle } from "@/features/theme/components/ThemeToggle";
+import { SiteNav } from "@/components/SiteNav";
+import { GithubIcon } from "@/components/icons";
 import { GatewayDiagram } from "./GatewayDiagram";
 import { useLandingApps } from "../hooks/useLandingApps";
+import { REPO_URL } from "../hooks/useRepoStats";
 
 /**
  * COMPONENT -- the marketing page.
@@ -18,17 +19,15 @@ export function LandingScreen() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
-        <Wordmark />
-        <div className="flex items-center gap-1">
-          <ThemeToggle />
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/start">Sign in</Link>
-          </Button>
-        </div>
-      </header>
+      <SiteNav />
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-20 px-6 pb-24">
+      {/*
+        max-w-5xl and px-5, matching the nav's column exactly. It was 6xl/px-6
+        before, which meant the logo in the header sat a few pixels outside the
+        content it was heading -- the kind of misalignment nobody consciously
+        notices and everybody feels.
+      */}
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-20 px-5 pb-24">
         {/* ── Hero: copy left, diagram right ───────────────────────────── */}
         <section className="grid items-center gap-10 pt-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-14 lg:pt-16">
           <div className="flex flex-col items-start gap-6">
@@ -119,16 +118,17 @@ export function LandingScreen() {
         </section>
       </main>
 
-      <footer className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 border-t px-6 py-6">
+      <footer className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 border-t px-5 py-6">
         <span className="text-mini text-text-quaternary">
           sirup.gg — MIT licensed
         </span>
         <a
-          href="https://github.com/roxy-gg/sirup"
+          href={REPO_URL}
           target="_blank"
           rel="noreferrer"
-          className="text-mini text-text-tertiary underline-offset-4 transition-colors hover:text-foreground hover:underline"
+          className="inline-flex items-center gap-1.5 text-mini text-text-tertiary underline-offset-4 transition-colors hover:text-foreground hover:underline"
         >
+          <GithubIcon className="size-3.5" />
           Source on GitHub
         </a>
       </footer>

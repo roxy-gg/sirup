@@ -560,6 +560,76 @@
   to { stroke-dashoffset: 0; }
 }
 
+/* ── Site nav ─────────────────────────────────────────────────────────── */
+
+/* The mark takes a press like any other control. It is a link home, and a mark
+   that does not acknowledge the click feels dead next to buttons that do. */
+.s-mark {
+  transition: transform var(--duration-quick) var(--ease-smooth-out);
+}
+.s-logo-link:active .s-mark {
+  transform: scale(0.92);
+}
+
+/* The star nudges up on hover — a small "this is worth clicking" cue on the one
+   link that leaves the site. Gated to fine pointers: on touch, :hover sticks
+   after the finger lifts and the star would stay parked in its hover state. */
+@media (hover: hover) and (pointer: fine) {
+  .s-ghstar {
+    transition: transform var(--duration-quick) var(--ease-smooth-out);
+  }
+  .s-ghlink:hover .s-ghstar {
+    transform: translateY(-1px) scale(1.15);
+  }
+}
+
+/* Brand switcher.
+
+   The chevron flips to point up while the menu is open, so the control says
+   where its panel went instead of sitting inert underneath it. Always 180deg in
+   the same direction — alternating the sign reads as two different mechanisms. */
+.s-brand-trigger svg {
+  transition: transform var(--duration-fast) var(--ease-smooth-out);
+}
+.s-brand-trigger svg[data-open] {
+  transform: rotate(180deg);
+}
+
+/* The panel scales up from its top-left corner — the corner nearest the
+   trigger — so it reads as unfolding out of the chevron rather than
+   materialising over the page. From --scale-large, never from 0: menus should
+   not pop out of nowhere. */
+@keyframes s-brand-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--distance-micro) * -1)) scale(var(--scale-large));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.s-brand-menu {
+  transform-origin: top left;
+  animation: s-brand-menu-in var(--duration-quick) var(--ease-smooth-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .s-mark,
+  .s-ghstar,
+  .s-brand-trigger svg {
+    transition: none;
+  }
+  .s-logo-link:active .s-mark,
+  .s-ghlink:hover .s-ghstar {
+    transform: none;
+  }
+  .s-brand-menu {
+    animation: none;
+  }
+}
+
 /* ── App swap — the logo wall rotating on the landing page ─────────────── */
 .t-app-swap {
   animation: t-app-swap var(--duration-very-slow) var(--ease-smooth-out) backwards;
