@@ -127,12 +127,13 @@ export function OAuthConnectSheet({
 
             <Alert role="note">
               <ShieldCheckIcon />
-              <AlertTitle>What sirup asks for</AlertTitle>
+              <AlertTitle>Full mailbox access</AlertTitle>
               <AlertDescription>
                 <p>
-                  Google asks you to approve reading mail and creating drafts.
-                  Every tool the Gmail MCP server exposes is then available on
-                  your endpoint, and you can disable any of them afterwards.
+                  Google asks you to approve full access to your mail, so every
+                  tool works — search, read, draft, label, trash, and spam. All
+                  23 land on your endpoint and you can disable any of them
+                  afterwards.
                 </p>
                 <p>
                   Email is untrusted input. Use a trusted MCP client and review

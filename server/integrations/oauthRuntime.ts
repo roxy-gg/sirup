@@ -35,6 +35,19 @@ export async function oauthTransportOptionsForServer(
     throw new Error("Authorization expired. Disconnect and reconnect this account.");
   }
 
+  // A grant issued before the integration widened its scopes still works for
+  // some tools and 403s on the rest. Surface that as one clear error on the
+  // connection instead of letting individual tool calls fail mysteriously.
+  if (credential.granted_scopes) {
+    const granted = new Set(credential.granted_scopes.split(/\s+/).filter(Boolean));
+    const missing = integration.scopes.filter((scope) => !granted.has(scope));
+    if (missing.length > 0) {
+      throw new Error(
+        `This ${integration.name} connection was authorized with fewer permissions than it now needs. Reconnect the account to grant them.`,
+      );
+    }
+  }
+
   return {
     authProvider: new StoredOAuthClientProvider({
       integration,

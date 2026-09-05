@@ -64,8 +64,11 @@ globalThis.fetch = (async (input, init) => {
       bearer_methods_supported: ["header"],
       resource: "https://gmailmcp.googleapis.com/mcp/v1",
       scopes_supported: [
-        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://mail.google.com/",
+        "https://www.googleapis.com/auth/gmail.modify",
         "https://www.googleapis.com/auth/gmail.compose",
+        "https://www.googleapis.com/auth/gmail.readonly",
+        "https://www.googleapis.com/auth/gmail.metadata",
       ],
     });
   }
@@ -98,9 +101,7 @@ globalThis.fetch = (async (input, init) => {
       refresh_token: `refresh-${tokenExchanges}`,
       token_type: "Bearer",
       expires_in: 3600,
-      scope:
-        "https://www.googleapis.com/auth/gmail.readonly " +
-        "https://www.googleapis.com/auth/gmail.compose",
+      scope: "https://mail.google.com/",
     });
   }
 
@@ -294,6 +295,20 @@ try {
   const work = await connectAccount("Gmail work");
   const personal = await connectAccount("Gmail personal");
 
+  // --- scopes: full access, or the tools silently 403 later ---
+  const { gmailIntegration } = await import("../server/integrations/gmail.js");
+  t.check(
+    "Gmail asks for full mailbox access",
+    gmailIntegration.scopes.includes("https://mail.google.com/"),
+    gmailIntegration.scopes.join(" "),
+  );
+  const workCredential = await McpOAuthCredentialModel.query().findById(work.id);
+  t.check(
+    "the granted scope is recorded on the connection",
+    workCredential?.granted_scopes === "https://mail.google.com/",
+    workCredential?.granted_scopes ?? undefined,
+  );
+
   // --- multi-account ---
   t.check("two Gmail accounts create separate rows", work.id !== personal.id);
   t.check("two Gmail accounts get separate namespaces", work.slug !== personal.slug);
@@ -366,6 +381,21 @@ try {
   t.check("Gmail is the first catalog entry", gmail?.key === "gmail", gmail?.key);
   t.check("Gmail uses the managed OAuth connector", gmail?.connect_mode === "oauth");
   t.check("Gmail is marked connected by integration key", gmail?.connected === true);
+
+  // --- a grant that predates a scope widening must fail loudly ---
+  const { oauthTransportOptionsForServer } = await import(
+    "../server/integrations/oauthRuntime.js"
+  );
+  await McpOAuthCredentialModel.query()
+    .findById(personal.id)
+    .patch({ granted_scopes: "https://www.googleapis.com/auth/gmail.readonly" });
+  const staleRejected = await oauthTransportOptionsForServer(personal)
+    .then(() => false)
+    .catch((error: Error) => /fewer permissions/i.test(error.message));
+  t.check("an under-scoped grant is rejected with a reconnect hint", staleRejected);
+  await McpOAuthCredentialModel.query()
+    .findById(personal.id)
+    .patch({ granted_scopes: "https://mail.google.com/" });
 
   // --- expiry ---
   const expired = await McpOAuthRequestModel.query().insert({

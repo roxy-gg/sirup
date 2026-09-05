@@ -212,6 +212,17 @@ export async function callback(
       );
     }
 
+    // Google drops any scope the user unticks on the consent screen. Without
+    // this check the connection looks healthy and then half its tools 403 at
+    // call time, which is far harder to debug than a failed sign-in.
+    const granted = new Set((tokens.scope ?? "").split(/\s+/).filter(Boolean));
+    const missing = integration.scopes.filter((scope) => !granted.has(scope));
+    if (tokens.scope && missing.length > 0) {
+      throw new Error(
+        `${integration.name} was not granted every permission it needs. Approve all of them and try again.`,
+      );
+    }
+
     const slugs = await listSlugs(request.user_id);
     const slug = uniqueSlug(
       slugify(request.connection_name),

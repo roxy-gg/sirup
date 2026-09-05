@@ -57,11 +57,15 @@ Before Gmail becomes connectable in the catalog:
 3. Configure `APP_ORIGIN`, `CREDENTIAL_ENCRYPTION_KEY`,
    `GOOGLE_OAUTH_CLIENT_ID`, and `GOOGLE_OAUTH_CLIENT_SECRET`.
 
-The integration requests `gmail.readonly` and `gmail.compose`, exactly as
-Google's Gmail MCP setup guide specifies, and passes through every tool the
-endpoint advertises. OAuth tokens and PKCE verifiers are encrypted at rest with
-AES-256-GCM; state is hashed, single-use, short-lived, and bound to the browser
-that started the flow.
+The integration requests `https://mail.google.com/` — Gmail's full-access scope
+— so every tool the endpoint advertises actually works. Requesting the narrower
+`gmail.readonly` + `gmail.compose` pair only authorizes 8 of the 23 tools;
+labelling, trashing, and spam all fail without `gmail.modify`. OAuth tokens and
+PKCE verifiers are encrypted at rest with AES-256-GCM; state is hashed,
+single-use, short-lived, and bound to the browser that started the flow.
+
+Note that the Gmail MCP server currently exposes **no send tool** — the closest
+is `create_draft`. That is Google's decision, not a scope we are withholding.
 
 Adding another provider is one file in `server/integrations/` plus a catalog
 entry with an `integration_key`.

@@ -3,10 +3,22 @@ import type { OAuthMcpIntegration } from "./types.js";
 
 export const GMAIL_MCP_URL = "https://gmailmcp.googleapis.com/mcp/v1";
 
-const GMAIL_SCOPES = [
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/gmail.compose",
-] as const;
+/**
+ * Full mailbox access.
+ *
+ * `https://mail.google.com/` is Gmail's maximal scope: read, compose, send,
+ * modify labels, trash, and permanent delete. Every tool the Gmail MCP server
+ * exposes is authorized by it, so nothing 403s halfway through a conversation.
+ *
+ * The narrower pair in Google's setup guide (readonly + compose) only covers
+ * 8 of the 23 tools — labelling, trashing, and spam all fail without modify.
+ * We are a passthrough: ask once, for everything, and let the user decide
+ * per-tool afterwards.
+ *
+ * `gmail.settings.basic` and `gmail.settings.sharing` are deliberately not
+ * requested: no current tool touches settings, filters, or delegation.
+ */
+const GMAIL_SCOPES = ["https://mail.google.com/"] as const;
 
 function unavailableReason(): string | null {
   if (!config.appOrigin) return "APP_ORIGIN is not configured.";

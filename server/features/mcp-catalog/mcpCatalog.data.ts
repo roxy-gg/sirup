@@ -31,7 +31,7 @@ const CATALOG: readonly CatalogSeed[] = [
     key: "gmail",
     name: "Gmail",
     category: "Communication",
-    description: "Search mail, read threads, manage labels, and draft replies.",
+    description: "Search, read, draft, label, and organize your mail.",
     url: "https://gmailmcp.googleapis.com/mcp/v1",
     auth: "oauth",
     auth_type: "oauth",
