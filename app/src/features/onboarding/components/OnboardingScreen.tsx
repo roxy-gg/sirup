@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Wordmark } from "@/components/Logo";
 import { useSession } from "@/features/auth/hooks/useSession";
@@ -16,9 +16,16 @@ import { DoneStep } from "./DoneStep";
  */
 export function OnboardingScreen() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { company, profiles } = useSession();
   const { step, direction, error, isSubmitting, goTo, submitAccount, submitCompany } =
     useOnboarding();
+
+  // `/start?mode=login` opens on the sign-in form. The navbar's "Sign in" link
+  // uses it so that clicking it does not land on "Create your account" and make
+  // the visitor undo a step before doing what they asked for. Anything else,
+  // including no param at all, falls back to register.
+  const initialMode = searchParams.get("mode") === "login" ? "login" : "register";
 
   // An existing user signing in already has a company: skip ahead.
   const effectiveStep = step === "company" && company ? "connect" : step;
@@ -45,6 +52,7 @@ export function OnboardingScreen() {
                     onSubmit={submitAccount}
                     isSubmitting={isSubmitting}
                     error={error}
+                    initialMode={initialMode}
                   />
                 ) : null}
 
