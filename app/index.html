@@ -8,6 +8,39 @@
       name="description"
       content="Connect every MCP server your company uses. Give your AI clients one endpoint."
     />
+
+    <!-- Icons. SVG first: browsers that support it scale one file to any tab
+         density, and the others fall through to the sized PNGs. -->
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" href="/favicon-16.png" type="image/png" sizes="16x16" />
+    <link rel="icon" href="/favicon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="manifest" href="/site.webmanifest" />
+
+    <!-- Matches the theme so the browser chrome and the page agree. Two
+         entries so the address bar follows the user's system preference. -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#08090a" media="(prefers-color-scheme: dark)" />
+
+    <!-- Social cards. Absolute URLs are required: scrapers do not resolve
+         relative paths, so these are rewritten at build time if a public
+         origin is configured. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="sirup.gg" />
+    <meta
+      property="og:description"
+      content="One MCP endpoint that aggregates every MCP server your company uses."
+    />
+    <meta property="og:image" content="/og-icon.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="sirup.gg" />
+    <meta
+      name="twitter:description"
+      content="One MCP endpoint that aggregates every MCP server your company uses."
+    />
+    <meta name="twitter:image" content="/og-icon.png" />
+
     <script>
       // Applied before first paint so a dark-mode reload never flashes white.
       // The inline background matches --background in index.css; without it

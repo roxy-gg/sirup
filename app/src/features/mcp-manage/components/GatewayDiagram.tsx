@@ -1,4 +1,5 @@
 import { AppIcon } from "@/components/AppIcon";
+import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -63,7 +64,8 @@ export function GatewayDiagram({ apps, endpoint, className }: GatewayDiagramProp
       <Connector side="left" count={CLIENTS.length} />
 
       {/* ── The gateway ───────────────────────────────────────────────── */}
-      <div className="theme-surface surface flex shrink-0 flex-col items-center justify-center gap-1 self-center rounded-2xl px-5 py-6">
+      <div className="theme-surface surface flex shrink-0 flex-col items-center justify-center gap-1.5 self-center rounded-2xl px-5 py-6">
+        <Logo className="size-8" />
         <span className="text-sm font-semibold tracking-tight">sirup.gg</span>
         <span className="max-w-[13ch] text-center font-mono text-[10px] leading-relaxed text-muted-foreground">
           {host}

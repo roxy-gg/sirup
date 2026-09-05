@@ -35,7 +35,8 @@
     "gen:icons": "tsx scripts/gen-icons.ts",
     "check:catalog": "tsx scripts/check-catalog.ts",
     "check:connect-flow": "tsx scripts/check-connect-flow.ts",
-    "check:surfaces": "tsx scripts/check-surfaces.ts"
+    "check:surfaces": "tsx scripts/check-surfaces.ts",
+    "gen:app-icons": "tsx scripts/gen-app-icons.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -76,6 +77,8 @@
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^4.7.0",
     "embedded-postgres": "18.4.0-beta.17",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4.1.14",
     "typescript": "^7.0.2",
     "vite": "^6.4.3"

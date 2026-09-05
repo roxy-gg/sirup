@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ThemeToggle } from "@/features/theme/components/ThemeToggle";
+import { Wordmark } from "@/components/Logo";
 
 /**
  * COMPONENT (stateless) -- the persistent shell: profile at the top, sections
@@ -30,7 +31,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-dvh bg-background">
       <aside className="theme-surface hidden w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
         <div className="flex flex-col gap-1 p-4">
-          <span className="text-sm font-semibold tracking-tight">sirup.gg</span>
+          <Wordmark />
           <span className="truncate text-xs text-muted-foreground">
             {company?.name ?? "Workspace"}
           </span>
@@ -83,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Mobile header: the sidebar collapses away below md. */}
         <header className="theme-surface flex items-center justify-between border-b px-4 py-3 md:hidden">
-          <span className="text-sm font-semibold tracking-tight">sirup.gg</span>
+          <Wordmark />
           <div className="flex items-center gap-1">
             {NAV.map(({ to, label }) => (
               <NavLink

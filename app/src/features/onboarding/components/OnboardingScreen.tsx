@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
+import { Wordmark } from "@/components/Logo";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ThemeToggle } from "@/features/theme/components/ThemeToggle";
 import { useOnboarding, ONBOARDING_STEPS } from "../hooks/useOnboarding";
@@ -30,7 +31,7 @@ export function OnboardingScreen() {
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="flex items-center justify-between px-6 py-5">
-        <span className="text-sm font-semibold tracking-tight">sirup.gg</span>
+        <Wordmark />
         <ThemeToggle />
       </header>
 

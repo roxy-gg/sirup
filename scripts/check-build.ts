@@ -132,11 +132,63 @@ t.check(
 );
 
 // --- no dev-only helper files left in the served output ---
+// app/public is now permanent (it holds the icons), so this checks contents
+// rather than the directory's absence.
 t.check(
   "no dev helper pages in app/public",
   !fs.existsSync("app/public") ||
     fs.readdirSync("app/public").every((file) => !file.startsWith("dev-")),
-  fs.existsSync("app/public") ? fs.readdirSync("app/public").join(", ") : "no public dir",
+  fs.existsSync("app/public")
+    ? fs.readdirSync("app/public").filter((f) => f.startsWith("dev-")).join(", ") ||
+        "clean"
+    : "no public dir",
+);
+
+// --- the icon set must be present and referenced ---
+// These are generated, not hand-authored, so a missing one means someone
+// changed logo.png without rerunning `npm run gen:app-icons`.
+const REQUIRED_ICONS = [
+  "favicon.ico",
+  "favicon.svg",
+  "favicon-16.png",
+  "favicon-32.png",
+  "apple-touch-icon.png",
+  "icon-192.png",
+  "icon-512.png",
+  "icon-maskable-192.png",
+  "icon-maskable-512.png",
+  "og-icon.png",
+  "site.webmanifest",
+];
+const missingIcons = REQUIRED_ICONS.filter(
+  (file) => !fs.existsSync(path.join("app/public", file)),
+);
+t.check(
+  "the generated icon set is present",
+  missingIcons.length === 0,
+  missingIcons.join(", ") || `${REQUIRED_ICONS.length} files`,
+);
+
+const html = fs.readFileSync("app/index.html", "utf8");
+for (const ref of ["/favicon.ico", "/apple-touch-icon.png", "/site.webmanifest"]) {
+  t.check(`index.html links ${ref}`, html.includes(ref));
+}
+
+// A manifest that names an icon it does not ship installs as a blank tile.
+const manifest = JSON.parse(
+  fs.readFileSync("app/public/site.webmanifest", "utf8"),
+) as { icons: Array<{ src: string; purpose: string }> };
+const brokenManifestIcons = manifest.icons.filter(
+  (icon) => !fs.existsSync(path.join("app/public", icon.src.replace(/^\//, ""))),
+);
+t.check(
+  "every manifest icon exists",
+  brokenManifestIcons.length === 0,
+  brokenManifestIcons.map((i) => i.src).join(", "),
+);
+t.check(
+  "the manifest ships a maskable icon",
+  manifest.icons.some((icon) => icon.purpose === "maskable"),
 );
 
 // --- compose must not publish the database to the host ---
