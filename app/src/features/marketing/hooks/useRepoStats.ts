@@ -3,7 +3,16 @@ import { api } from "@/lib/api";
 import type { RepoStatsResponse } from "@shared/api";
 
 /**
- * HOOKS -- the repo's star count, for the navbar badge.
+ * HOOKS -- the repo's star count.
+ *
+ * NOTE: `useRepoStats` is currently unused. The navbar shipped a star badge and
+ * it was pulled -- the count is low enough right now that showing it argues
+ * against us, and a number that has to be explained is not social proof. The
+ * hook and its `/api/public/github` endpoint are kept because they work and are
+ * self-contained: restoring the badge is an import and a span, not a rewrite.
+ * Delete both if that has not happened in a couple of months.
+ *
+ * `REPO_URL` is the live export -- the nav and the footer both link to it.
  *
  * The nav unmounts and remounts on every client-side navigation, so the
  * in-flight promise is cached at module scope: the count is fetched once per
