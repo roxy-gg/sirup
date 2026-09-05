@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Wordmark } from "@/components/Logo";
@@ -27,12 +28,34 @@ export function OnboardingScreen() {
   // including no param at all, falls back to register.
   const initialMode = searchParams.get("mode") === "login" ? "login" : "register";
 
+  /**
+   * Where to go when the flow ends.
+   *
+   * Normally the dashboard. But a user who arrived mid-OAuth was sent here by
+   * the consent screen, and belongs back there with their client still
+   * waiting. Only same-origin paths are honoured, so this cannot be used to
+   * bounce someone off-site.
+   */
+  const next = searchParams.get("next");
+  const destination = next?.startsWith("/") && !next.startsWith("//") ? next : "/mcp";
+
   // An existing user signing in already has a company: skip ahead.
   const effectiveStep = step === "company" && company ? "connect" : step;
   const stepIndex = ONBOARDING_STEPS.indexOf(effectiveStep);
 
+  /**
+   * Return immediately once there is a session, when one was asked for.
+   *
+   * A user sent here mid-OAuth wants to approve a client, not to be walked
+   * through the endpoint handoff they may have seen already. As soon as
+   * onboarding is actually complete, hand them straight back.
+   */
+  useEffect(() => {
+    if (next && company) void navigate(destination, { replace: true });
+  }, [next, company, destination, navigate]);
+
   function finish() {
-    void navigate("/mcp", { replace: true });
+    void navigate(destination, { replace: true });
   }
 
   return (

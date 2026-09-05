@@ -2,6 +2,8 @@ import express, { type NextFunction, type Request, type Response } from "express
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { ProfileModel } from "../database/models/index.js";
 import { createGatewayServer, type GatewayScope } from "./gatewayServer.js";
+import { oauthProvider } from "../features/oauth/oauth.provider.js";
+import { protectedResourceMetadataUrl } from "../features/oauth/oauth.route.js";
 
 export const gatewayRouter = express.Router();
 
@@ -9,8 +11,8 @@ export const gatewayRouter = express.Router();
  * The aggregated MCP endpoint: https://sirup.gg/mcp
  *
  * This is the whole product surface for an AI client. Point any MCP client at
- * this one URL with the company's gateway token and it sees every tool from
- * every connected upstream server.
+ * this one URL -- with a profile token, or through OAuth -- and it sees every
+ * tool from every connected upstream server.
  */
 
 /** A request that has passed gateway authentication. */
@@ -25,6 +27,7 @@ function extractToken(req: Request): string | null {
     return header.slice(7).trim();
   }
   // Some MCP clients cannot set custom headers; allow the token in the URL.
+  // Never for OAuth tokens -- see authenticateGateway.
   if (typeof req.query.token === "string" && req.query.token) {
     return req.query.token;
   }
@@ -32,11 +35,53 @@ function extractToken(req: Request): string | null {
 }
 
 /**
- * Resolves the gateway token to a profile.
+ * Tells the two credential types apart by prefix.
  *
- * The token identifies a profile, not a company: that is what lets one
- * workspace hand different tool sets to different clients. The company comes
- * along for logging and tenancy checks.
+ * Profile tokens are `sirup_<hex>`; OAuth access tokens are `sirup_at_<hex>`.
+ * Both are looked up by an indexed exact match, so this is not a security
+ * boundary -- an OAuth token presented as a profile token simply finds no row.
+ * It exists to avoid two queries on every request, and to keep the failure
+ * message accurate about which kind of credential was rejected.
+ */
+function looksLikeOAuthToken(token: string): boolean {
+  return token.startsWith("sirup_at_");
+}
+
+/**
+ * The RFC 9728 challenge.
+ *
+ * `resource_metadata` is the part that matters: it is how a client that
+ * arrived with no credential discovers there is an authorization server to
+ * talk to. A bare `Bearer realm="..."` leaves it with nowhere to go, which is
+ * exactly the dead end Claude hits when a connector has no token field.
+ */
+function challenge(res: Response, error?: string, description?: string): void {
+  const parts = [`Bearer realm="sirup.gg"`];
+  if (error) parts.push(`error="${error}"`);
+  // Quotes and backslashes would terminate the quoted-string early and make
+  // the whole header unparseable. The descriptions are ours today, but they
+  // carry text from thrown errors, so escape rather than assume.
+  if (description) {
+    parts.push(`error_description="${description.replace(/[\\"]/g, "")}"`);
+  }
+  parts.push(`resource_metadata="${protectedResourceMetadataUrl()}"`);
+
+  res.set("WWW-Authenticate", parts.join(", "));
+}
+
+/**
+ * Resolves a credential to a profile.
+ *
+ * Two ways in, one outcome. A profile token is a static secret the user copies
+ * from the dashboard; an OAuth access token is minted after a browser consent
+ * flow. Both resolve to exactly one profile, and everything downstream is
+ * scoped to that profile alone -- so the rest of the gateway neither knows nor
+ * cares which was used.
+ *
+ * Supporting both is not redundancy. Clients that let you set a header are
+ * fine with the token. Clients that only accept a URL -- Claude's custom
+ * connectors being the case in point -- have no way to send one, and OAuth is
+ * the only path open to them.
  *
  * Wrapped so a database failure returns a JSON-RPC error instead of rejecting
  * inside bare Express middleware, which would hang the client and crash the
@@ -51,8 +96,7 @@ async function authenticateGateway(
     const token = extractToken(req);
 
     if (!token) {
-      // RFC 9728 / MCP authorization: tell the client how to authenticate.
-      res.set("WWW-Authenticate", 'Bearer realm="sirup.gg"');
+      challenge(res);
       res.status(401).json({
         jsonrpc: "2.0",
         error: { code: -32001, message: "Missing gateway token." },
@@ -61,10 +105,56 @@ async function authenticateGateway(
       return;
     }
 
+    if (looksLikeOAuthToken(token)) {
+      // RFC 6750 §2.3 forbids bearer tokens in the query string, and the MCP
+      // spec repeats it. The ?token= escape hatch above exists for clients
+      // that cannot set headers; a client doing OAuth demonstrably can, so
+      // there is no reason to accept the weaker form from it.
+      if (!req.get("authorization")) {
+        challenge(res, "invalid_request", "Send the access token in the Authorization header.");
+        res.status(401).json({
+          jsonrpc: "2.0",
+          error: { code: -32001, message: "Access tokens must be sent in the Authorization header." },
+          id: null,
+        });
+        return;
+      }
+
+      try {
+        const auth = await oauthProvider.verifyAccessToken(token);
+        const extra = auth.extra as {
+          userId: string;
+          companyId: string;
+          profileId: string;
+          profileName: string;
+        };
+
+        req.scope = {
+          userId: extra.userId,
+          companyId: extra.companyId,
+          profileId: extra.profileId,
+          profileName: extra.profileName,
+        };
+        next();
+        return;
+      } catch (error) {
+        // Expired, revoked, or unknown. The client's move is to refresh or to
+        // re-run consent, and the challenge tells it where to do that.
+        const message = error instanceof Error ? error.message : "Invalid access token.";
+        challenge(res, "invalid_token", message);
+        res.status(401).json({
+          jsonrpc: "2.0",
+          error: { code: -32001, message },
+          id: null,
+        });
+        return;
+      }
+    }
+
     const profile = await ProfileModel.query().findOne({ gateway_token: token });
 
     if (!profile) {
-      res.set("WWW-Authenticate", 'Bearer realm="sirup.gg", error="invalid_token"');
+      challenge(res, "invalid_token");
       res.status(401).json({
         jsonrpc: "2.0",
         error: { code: -32001, message: "Invalid gateway token." },

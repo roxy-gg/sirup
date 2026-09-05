@@ -4,6 +4,7 @@ import { profilesRouter } from "../features/profiles/profiles.route.js";
 import { mcpServersRouter } from "../features/mcp-servers/mcpServers.route.js";
 import { mcpLogsRouter } from "../features/mcp-logs/mcpLogs.route.js";
 import { mcpCatalogRouter } from "../features/mcp-catalog/mcpCatalog.route.js";
+import { oauthConsentRouter } from "../features/oauth/oauth.route.js";
 import { publicCatalog } from "../features/mcp-catalog/mcpCatalog.logic.js";
 import { getRepoStats } from "../features/github/github.data.js";
 import { oauthIntegrationsRouter } from "../integrations/oauth.route.js";
@@ -41,7 +42,12 @@ apiRouter.use("/profiles", profilesRouter);
 apiRouter.use("/mcp-servers", mcpServersRouter);
 apiRouter.use("/mcp-logs", mcpLogsRouter);
 apiRouter.use("/mcp-catalog", mcpCatalogRouter);
+// Outbound: sirup authenticating to Google so it can proxy Gmail et al.
 apiRouter.use("/integrations", oauthIntegrationsRouter);
+// Inbound: the consent screen and connected-apps list for clients
+// authenticating to *us*. The OAuth protocol endpoints are not here -- their
+// paths are fixed by spec at the root.
+apiRouter.use("/oauth", oauthConsentRouter);
 
 // An unmatched /api/* must 404 as JSON, not fall through to the SPA shell.
 apiRouter.use(notFoundHandler);

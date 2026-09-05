@@ -1,5 +1,5 @@
 import { useRef, type ReactNode } from "react";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AppShell } from "@/components/AppShell";
 import { ThemeProvider } from "@/features/theme/hooks/useTheme";
@@ -8,10 +8,25 @@ import { LandingScreen } from "@/features/marketing/components/LandingScreen";
 import { OnboardingScreen } from "@/features/onboarding/components/OnboardingScreen";
 import { McpScreen } from "@/features/mcp-manage/components/McpScreen";
 import { LogsScreen } from "@/features/mcp-logs/components/LogsScreen";
+import { ConsentScreen } from "@/features/oauth/components/ConsentScreen";
 
 /** Held until the session resolves, so no screen renders on a guess. */
 function Booting() {
   return <div className="min-h-dvh bg-background" />;
+}
+
+/**
+ * Sanitises a `?next=` return path.
+ *
+ * Only a same-origin path is ever followed. An absolute URL, a
+ * protocol-relative `//evil.com`, or anything else is discarded -- otherwise
+ * this is an open redirect, and a link to our own sign-in page could be used
+ * to bounce a user somewhere hostile with our domain in the referrer.
+ */
+function safeNext(value: string | null): string | null {
+  if (!value) return null;
+  if (!value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
 }
 
 /**
@@ -49,6 +64,7 @@ function LandingRoute() {
  */
 function OnboardingRoute() {
   const { status, isOnboarded } = useSession();
+  const [search] = useSearchParams();
   // Captured once on mount: a company created *during* the flow must not
   // retroactively count as "already onboarded" and skip the remaining steps.
   const wasOnboardedOnEntry = useRef<boolean | null>(null);
@@ -59,7 +75,11 @@ function OnboardingRoute() {
     wasOnboardedOnEntry.current = isOnboarded;
   }
 
-  return wasOnboardedOnEntry.current ? <Navigate to="/mcp" replace /> : <OnboardingScreen />;
+  if (!wasOnboardedOnEntry.current) return <OnboardingScreen />;
+
+  // A signed-in user who was sent here mid-OAuth goes back to finish that,
+  // not to the dashboard -- otherwise their client is left waiting forever.
+  return <Navigate to={safeNext(search.get("next")) ?? "/mcp"} replace />;
 }
 
 export default function App() {
@@ -86,6 +106,12 @@ export default function App() {
                 </Protected>
               }
             />
+            {/* Not wrapped in Protected: a client sends people here before
+                they have signed in, and the screen handles that itself by
+                offering sign-in rather than bouncing them to onboarding and
+                losing the request. */}
+            <Route path="/oauth/consent" element={<ConsentScreen />} />
+            <Route path="/oauth/consent/:requestId" element={<ConsentScreen />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
 

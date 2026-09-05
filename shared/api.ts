@@ -7,6 +7,7 @@
 import type {
   CatalogEntry,
   Company,
+  IsoDateTime,
   LogSummary,
   McpLog,
   McpServer,
@@ -137,6 +138,46 @@ export interface LogSummaryResponse {
 
 export interface CatalogResponse {
   catalog: CatalogEntry[];
+}
+
+/* ── oauth ─────────────────────────────────────────────────────────────── */
+
+/** What the consent screen needs to render the "X wants access" prompt. */
+export interface ConsentRequestResponse {
+  request_id: Uuid;
+  /** Self-declared by the client at registration. Display only, never trusted. */
+  client_name: string;
+  client_uri: string | null;
+  /** Shown verbatim, so the user can see where approving sends them. */
+  redirect_uri: string;
+  scopes: string[];
+  /** Empty when the visitor is not signed in yet. */
+  profiles: Profile[];
+}
+
+export interface ApproveConsentBody {
+  /** Which profile the client will see. Must belong to the caller. */
+  profile_id: Uuid;
+}
+
+/** Where the browser should go next. Not a 302: the caller is a fetch. */
+export interface ConsentDecisionResponse {
+  redirect_to: string;
+}
+
+/** A client holding a live grant, for the "Connected apps" list. */
+export interface ConnectedApp {
+  client_id: string;
+  client_name: string;
+  client_uri: string | null;
+  profile_id: Uuid;
+  profile_name: string | null;
+  scopes: string[];
+  authorized_at: IsoDateTime;
+}
+
+export interface ConnectedAppListResponse {
+  apps: ConnectedApp[];
 }
 
 /* ── github ────────────────────────────────────────────────────────────── */

@@ -244,6 +244,158 @@ export class McpToolModel extends BaseModel {
   }
 }
 
+/**
+ * An MCP client that registered itself, per RFC 7591.
+ *
+ * Registration is open: anyone may register, which is what lets a client the
+ * user has never heard of connect without us shipping an integration for it.
+ * That is safe because registering grants nothing on its own -- a client only
+ * gains access when a signed-in user approves it on the consent screen, and
+ * only to the profile they picked there.
+ */
+export class OAuthClientModel extends BaseModel {
+  client_id!: string;
+  client_secret!: string | null;
+  client_secret_expires_at!: string | number | null;
+  client_id_issued_at!: string | number | null;
+  client_name!: string | null;
+  client_uri!: string | null;
+  logo_uri!: string | null;
+  policy_uri!: string | null;
+  tos_uri!: string | null;
+  software_id!: string | null;
+  software_version!: string | null;
+  redirect_uris!: string[];
+  grant_types!: string[];
+  response_types!: string[];
+  token_endpoint_auth_method!: string;
+  scope!: string | null;
+
+  static override get tableName(): string {
+    return "oauth_clients";
+  }
+
+  /**
+   * Tells Objection these columns are JSON, not Postgres arrays.
+   *
+   * Without this the pg driver serialises a JS array as an array literal --
+   * `{authorization_code,refresh_token}` -- which a jsonb column rejects with
+   * "invalid input syntax for type json". Object-valued jsonb columns happen
+   * to work untold, which is why this only bites on the array ones.
+   */
+  static override get jsonAttributes(): string[] {
+    return ["redirect_uris", "grant_types", "response_types"];
+  }
+}
+
+/** A consent screen in flight: validated parameters, no decision yet. */
+export class OAuthRequestModel extends BaseModel {
+  client_id!: string;
+  redirect_uri!: string;
+  code_challenge!: string;
+  scopes!: string[];
+  state!: string | null;
+  resource!: string | null;
+  expires_at!: Date;
+
+  /**
+   * These rows are written once and never updated, so the table has no
+   * `updated_at` column and `created_at` carries a database default. The base
+   * implementation would write both and fail on the missing one.
+   */
+  override $beforeInsert(): void {}
+
+  override $beforeUpdate(): void {}
+
+  static override get tableName(): string {
+    return "oauth_requests";
+  }
+
+  /** See OAuthClientModel.jsonAttributes -- a JS array needs stringifying. */
+  static override get jsonAttributes(): string[] {
+    return ["scopes"];
+  }
+}
+
+/** The one-time authorization code handed back on the redirect. */
+export class OAuthCodeModel extends BaseModel {
+  code_hash!: string;
+  client_id!: string;
+  user_id!: Uuid;
+  profile_id!: Uuid;
+  redirect_uri!: string;
+  code_challenge!: string;
+  scopes!: string[];
+  resource!: string | null;
+  expires_at!: Date;
+  consumed_at!: Date | null;
+
+  /** See OAuthRequestModel: no `updated_at` column on this table. */
+  override $beforeInsert(): void {}
+
+  override $beforeUpdate(): void {}
+
+  static override get tableName(): string {
+    return "oauth_codes";
+  }
+
+  /** See OAuthClientModel.jsonAttributes -- a JS array needs stringifying. */
+  static override get jsonAttributes(): string[] {
+    return ["scopes"];
+  }
+}
+
+/**
+ * An issued access or refresh token.
+ *
+ * Only the SHA-256 of the token is stored. The plaintext exists once, in the
+ * response to the client, and is never recoverable from here.
+ */
+export class OAuthTokenModel extends BaseModel {
+  token_hash!: string;
+  kind!: "access" | "refresh";
+  client_id!: string;
+  user_id!: Uuid;
+  profile_id!: Uuid;
+  scopes!: string[];
+  resource!: string | null;
+  family_id!: Uuid;
+  expires_at!: Date;
+  revoked_at!: Date | null;
+
+  client?: OAuthClientModel;
+  profile?: ProfileModel;
+
+  /** See OAuthRequestModel: no `updated_at` column on this table. */
+  override $beforeInsert(): void {}
+
+  override $beforeUpdate(): void {}
+
+  static override get tableName(): string {
+    return "oauth_tokens";
+  }
+
+  /** See OAuthClientModel.jsonAttributes -- a JS array needs stringifying. */
+  static override get jsonAttributes(): string[] {
+    return ["scopes"];
+  }
+
+  static override get relationMappings(): RelationMappings {
+    return {
+      client: {
+        relation: BaseModel.BelongsToOneRelation,
+        modelClass: () => OAuthClientModel as unknown as typeof Model,
+        join: { from: "oauth_tokens.client_id", to: "oauth_clients.client_id" },
+      },
+      profile: {
+        relation: BaseModel.BelongsToOneRelation,
+        modelClass: () => ProfileModel as unknown as typeof Model,
+        join: { from: "oauth_tokens.profile_id", to: "profiles.id" },
+      },
+    };
+  }
+}
+
 export class McpLogModel extends BaseModel {
   user_id!: Uuid;
   company_id!: Uuid;

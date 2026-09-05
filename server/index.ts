@@ -10,6 +10,7 @@ import { config } from "./config.js";
 import { initDatabase } from "./database/knex.js";
 import { apiRouter } from "./routes/index.js";
 import { gatewayRouter } from "./mcp/gatewayRoutes.js";
+import { oauthProtocolRouter } from "./features/oauth/oauth.route.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -30,6 +31,14 @@ async function bootstrap(): Promise<void> {
   app.use(compression());
   app.use(cookieParser());
   app.use(express.json({ limit: "1mb" }));
+
+  // ---- OAuth ------------------------------------------------------------
+  // At the root, and ahead of everything else: RFC 8414 and RFC 9728 fix these
+  // paths under /.well-known, and clients look there and nowhere else. Mounted
+  // before the SPA fallback too, or a discovery request would be answered with
+  // the HTML shell and a 200, which reads to a client as "malformed metadata"
+  // rather than "not supported".
+  app.use(oauthProtocolRouter);
 
   // ---- API -------------------------------------------------------------
   app.use("/api", apiRouter);
