@@ -394,6 +394,39 @@
     var(--shadow-overlay);
 }
 
+/* ─────────────────────────────────────────────────────────────────────────
+   Scrollbars.
+   
+   OverlayScrollbars floats the bar above the content instead of reserving a
+   gutter, so a panel is the same width whether or not it overflows. Styled to
+   the theme's own greys rather than the OS default, which on Windows is a wide
+   opaque strip that ignores dark mode entirely.
+   ───────────────────────────────────────────────────────────────────────── */
+.os-theme-sirup {
+  --os-size: 10px;
+  --os-padding-perpendicular: 2px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 8px;
+  --os-track-bg: transparent;
+  --os-track-bg-hover: transparent;
+  --os-track-bg-active: transparent;
+  --os-handle-border-radius: 8px;
+  /* Neutral and low-contrast: a scrollbar is orientation, not content. */
+  --os-handle-bg: color-mix(in oklab, var(--color-foreground) 18%, transparent);
+  --os-handle-bg-hover: color-mix(in oklab, var(--color-foreground) 28%, transparent);
+  --os-handle-bg-active: color-mix(in oklab, var(--color-foreground) 36%, transparent);
+  --os-handle-min-size: 32px;
+}
+
+/* Hide the native bar on elements we do not wrap, so the two never both show. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--color-foreground) 18%, transparent)
+      transparent;
+  }
+}
+
 /* ── Texts reveal — staggered blurred rise for stacked lines ───────────── */
 .t-stagger > * {
   opacity: 0;

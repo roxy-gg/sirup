@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AppIcon } from "@/components/AppIcon";
+import { ScrollArea } from "@/components/ScrollArea";
 import { cn } from "@/lib/utils";
 import type { ConnectServerBody } from "@shared/api";
 import type { AuthType, CatalogEntry, McpServerWithTools } from "@shared/domain";
@@ -250,9 +251,9 @@ export function ConnectSheet({
               />
             </div>
 
-            <div className="min-h-0 flex-1 overflow-y-auto px-6 py-2">
+            <ScrollArea className="min-h-0 flex-1" contentClassName="px-6 py-2">
               {visibleTools.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">
+                <p className="py-8 text-center text-sm text-text-tertiary">
                   No actions match that search.
                 </p>
               ) : (
@@ -294,7 +295,7 @@ export function ConnectSheet({
                   })}
                 </ul>
               )}
-            </div>
+            </ScrollArea>
 
             <SheetFooter className="flex-row justify-end gap-2 border-t p-6">
               <Button

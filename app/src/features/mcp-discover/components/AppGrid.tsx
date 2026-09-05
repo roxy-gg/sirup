@@ -99,7 +99,7 @@ function AppRow({
         "transition-colors duration-[var(--duration-quick)]",
         interactive && "cursor-pointer hover:bg-accent/40",
         interactive &&
-          "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
+          "focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-none",
         unavailable && "opacity-60",
       )}
     >

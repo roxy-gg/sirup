@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ThemeToggle } from "@/features/theme/components/ThemeToggle";
 import { ProfileSwitcher } from "@/features/profiles/components/ProfileSwitcher";
+import { ScrollArea } from "@/components/ScrollArea";
 import { Wordmark } from "@/components/Logo";
 
 /**
@@ -108,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* The only scroll container. Keeping it here rather than on the page
             means the sidebar never moves, whatever the content height. */}
-        <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+        <ScrollArea className="min-w-0 flex-1">{children}</ScrollArea>
       </div>
     </div>
   );

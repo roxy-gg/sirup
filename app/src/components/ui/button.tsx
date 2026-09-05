@@ -7,7 +7,7 @@ const buttonVariants = cva(
   // Linear's buttons are slightly tighter and lighter than shadcn's defaults:
   // text-mini rather than text-sm, medium weight (510) rather than 500, and a
   // fast transition so the hover state feels immediate rather than laggy.
-  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-mini font-medium whitespace-nowrap outline-none transition-[background-color,border-color,color,box-shadow,opacity] duration-[var(--duration-quick)] focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md text-mini font-medium whitespace-nowrap outline-none transition-[background-color,border-color,color,box-shadow,opacity] duration-[var(--duration-quick)] focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -15,7 +15,7 @@ const buttonVariants = cva(
         default:
           "bg-primary text-primary-foreground shadow-[inset_0_var(--border-hairline)_0_#ffffff26] hover:opacity-90",
         destructive:
-          "bg-destructive text-destructive-foreground hover:opacity-90 focus-visible:ring-ring/40",
+          "bg-destructive text-destructive-foreground hover:opacity-90",
         outline:
           "surface-flat bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-accent",

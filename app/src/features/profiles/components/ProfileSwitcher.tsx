@@ -30,7 +30,7 @@ export function ProfileSwitcher({ companyName }: { companyName: string }) {
           className={cn(
             "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left",
             "transition-colors duration-[var(--duration-quick)] hover:bg-sidebar-accent/60",
-            "focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none",
+            "focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring",
           )}
         >
           <div className="flex min-w-0 flex-1 flex-col">
