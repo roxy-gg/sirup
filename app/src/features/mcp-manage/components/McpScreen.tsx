@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,8 @@ import { CopyField } from "@/features/onboarding/components/CopyField";
 import { ClientConfig } from "./ClientConfig";
 import { ServerCard } from "./ServerCard";
 import { ConnectSheet } from "./ConnectSheet";
-import { setToolEnabled } from "../data/mcpServersApi";
+import { OAuthConnectSheet } from "./OAuthConnectSheet";
+import { fetchServer, setToolEnabled } from "../data/mcpServersApi";
 import { attachServerToProfile as attachToProfile } from "@/features/profiles/data/profilesApi";
 import type { ConnectServerBody } from "@shared/api";
 import type { CatalogEntry, McpServerWithTools, Uuid } from "@shared/domain";
@@ -38,59 +40,133 @@ import type { CatalogEntry, McpServerWithTools, Uuid } from "@shared/domain";
 export function McpScreen() {
   const { activeProfile, refresh } = useSession();
   const servers = useMcpServers();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [tab, setTab] = useState("apps");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [oauthSheetOpen, setOauthSheetOpen] = useState(false);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
+  const [oauthCallbackId] = useState<Uuid | null>(
+    () => new URLSearchParams(window.location.search).get("oauth_server") as Uuid | null,
+  );
+  const [oauthCallbackError] = useState<string | null>(
+    () => new URLSearchParams(window.location.search).get("oauth_error"),
+  );
+  const [oauthCallbackHandled, setOauthCallbackHandled] = useState(false);
   // Bumped after a connect so the catalog re-reads its "Added" flags.
   const [catalogKey, setCatalogKey] = useState(0);
 
+  const { servers: serverRows, reload: reloadServers } = servers;
   const catalog = useMcpCatalog(catalogKey);
   const endpoint = `${window.location.origin}/mcp`;
 
   /**
+   * Handles the return trip from a provider. The connection is already saved
+   * and attached by the callback, so this only reports the outcome and
+   * refreshes what is on screen.
+   */
+  useEffect(() => {
+    if (oauthCallbackHandled) return;
+    if (!oauthCallbackError && !oauthCallbackId) return;
+
+    setOauthCallbackHandled(true);
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("oauth_error");
+    nextParams.delete("oauth_server");
+    setSearchParams(nextParams, { replace: true });
+
+    if (oauthCallbackError) {
+      toast.error("Could not finish signing in", {
+        description: oauthCallbackError,
+      });
+      return;
+    }
+    if (!oauthCallbackId) return;
+
+    setTab("connected");
+    setCatalogKey((key) => key + 1);
+    void reloadServers();
+    void refresh();
+
+    fetchServer(oauthCallbackId)
+      .then((server) => {
+        if (server.status === "connected") {
+          toast.success(`${server.name} connected`, {
+            description: `${server.tool_count} tool${
+              server.tool_count === 1 ? "" : "s"
+            } added to your endpoint.`,
+          });
+        } else {
+          toast.error(`${server.name} signed in, but tools could not be loaded`, {
+            description: server.status_message ?? "Retry from the connected list.",
+          });
+        }
+      })
+      .catch(() => {
+        toast.success("Account connected.");
+      });
+  }, [
+    oauthCallbackError,
+    oauthCallbackHandled,
+    oauthCallbackId,
+    searchParams,
+    setSearchParams,
+    reloadServers,
+    refresh,
+  ]);
+
+  /**
    * How many connections exist per catalog entry, and under what labels.
    *
-   * Matched on URL because that is what identifies the upstream -- the label
-   * is deliberately free-form so two accounts on the same app can be told
-   * apart. Normalised because several providers require a trailing slash, so
-   * the stored URL and the catalog URL can differ by one character.
+   * Managed integrations match on their stable key; generic entries match on
+   * normalized URL. The label stays free-form so multiple accounts remain
+   * distinct even when they share one upstream endpoint.
    */
   const connectionsByApp = useMemo(() => {
     const normalise = (url: string) => url.replace(/\/+$/, "").toLowerCase();
-    const byUrl = new Map<string, string[]>();
+    const byIdentity = new Map<string, string[]>();
 
-    for (const server of servers.servers) {
-      const key = normalise(server.url);
-      byUrl.set(key, [...(byUrl.get(key) ?? []), server.name]);
+    for (const server of serverRows) {
+      const key = server.integration_key
+        ? `integration:${server.integration_key}`
+        : `url:${normalise(server.url)}`;
+      byIdentity.set(key, [...(byIdentity.get(key) ?? []), server.name]);
     }
 
     const counts: Record<string, number> = {};
     const names: Record<string, string[]> = {};
     for (const entry of catalog.all) {
-      if (!entry.url) continue;
-      const matches = byUrl.get(normalise(entry.url)) ?? [];
+      if (!entry.url && !entry.integration_key) continue;
+      const key = entry.integration_key
+        ? `integration:${entry.integration_key}`
+        : `url:${normalise(entry.url!)}`;
+      const matches = byIdentity.get(key) ?? [];
       if (matches.length > 0) {
         counts[entry.key] = matches.length;
         names[entry.key] = matches;
       }
     }
     return { counts, names };
-  }, [servers.servers, catalog.all]);
+  }, [serverRows, catalog.all]);
 
   /**
    * Connected servers grouped by the app they point at.
    *
-   * Two accounts on the same app belong next to each other; a flat list sorted
-   * by connect date scatters them. Servers with no catalog match (a custom
-   * endpoint) each form their own group of one.
+   * Two accounts on the same app belong next to each other, and catalog order
+   * keeps Gmail first here as well. Servers with no catalog match (a custom
+   * endpoint) each form their own group of one after known integrations.
    */
   const groupedServers = useMemo(() => {
     const normalise = (url: string) => url.replace(/\/+$/, "").toLowerCase();
-    const entryByUrl = new Map(
+    const entryByIdentity = new Map(
       catalog.all
-        .filter((entry) => entry.url)
-        .map((entry) => [normalise(entry.url!), entry] as const),
+        .filter((entry) => entry.url || entry.integration_key)
+        .map((entry) => [
+          entry.integration_key
+            ? `integration:${entry.integration_key}`
+            : `url:${normalise(entry.url!)}`,
+          entry,
+        ] as const),
     );
 
     const groups = new Map<
@@ -100,12 +176,19 @@ export function McpScreen() {
         label: string;
         icon: string | null;
         entry: CatalogEntry | undefined;
-        servers: typeof servers.servers;
+        servers: typeof serverRows;
       }
     >();
 
-    for (const server of servers.servers) {
-      const entry = entryByUrl.get(normalise(server.url));
+    const catalogOrder = new Map(
+      catalog.all.map((entry, index) => [entry.key, index] as const),
+    );
+
+    for (const server of serverRows) {
+      const identity = server.integration_key
+        ? `integration:${server.integration_key}`
+        : `url:${normalise(server.url)}`;
+      const entry = entryByIdentity.get(identity);
       // Unmatched servers key on their own id, so they never merge together.
       const key = entry?.key ?? `custom:${server.id}`;
       const existing = groups.get(key);
@@ -122,11 +205,25 @@ export function McpScreen() {
       }
     }
 
-    return [...groups.values()];
-  }, [servers.servers, catalog.all]);
+    return [...groups.values()].sort((left, right) => {
+      const leftOrder = left.entry
+        ? (catalogOrder.get(left.entry.key) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+      const rightOrder = right.entry
+        ? (catalogOrder.get(right.entry.key) ?? Number.MAX_SAFE_INTEGER)
+        : Number.MAX_SAFE_INTEGER;
+      return leftOrder - rightOrder;
+    });
+  }, [serverRows, catalog.all]);
 
   function openSheet(app: CatalogEntry) {
+    if (app.connect_mode === "unavailable") return;
+
     setSelected(app);
+    if (app.connect_mode === "oauth") {
+      setOauthSheetOpen(true);
+      return;
+    }
     setSheetOpen(true);
   }
 
@@ -155,7 +252,7 @@ export function McpScreen() {
 
   function handleDone(server: McpServerWithTools) {
     setCatalogKey((key) => key + 1);
-    void servers.reload();
+    void reloadServers();
     // Counts on the switcher and the endpoint panel just changed.
     void refresh();
     setTab("connected");
@@ -243,7 +340,7 @@ export function McpScreen() {
           <TabsList>
             <TabsTrigger value="apps">All apps</TabsTrigger>
             <TabsTrigger value="connected">
-              Connected ({servers.servers.length})
+              Connected ({serverRows.length})
             </TabsTrigger>
           </TabsList>
 
@@ -263,9 +360,9 @@ export function McpScreen() {
         {/* ── All apps: the default view ──────────────────────────────── */}
         <TabsContent value="apps" className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            {catalog.connectableCount} apps connect with an API key today.
-            Providers marked <span className="text-foreground">OAuth soon</span>{" "}
-            need a browser sign-in flow we haven&rsquo;t shipped yet.
+            {catalog.connectableCount} apps are ready to connect. Gmail uses a
+            secure Google sign-in; other OAuth providers stay unavailable until
+            they have a reviewed integration.
           </p>
 
           <div className="flex flex-wrap gap-1.5">
@@ -295,7 +392,7 @@ export function McpScreen() {
             Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-[92px] rounded-xl" />
             ))
-          ) : servers.servers.length === 0 ? (
+          ) : serverRows.length === 0 ? (
             <Empty className="rounded-xl border border-dashed">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -342,7 +439,9 @@ export function McpScreen() {
                       void handleToggleEnabled(id, enabled)
                     }
                     onAddAnother={
-                      group.entry ? () => openSheet(group.entry!) : undefined
+                      group.entry?.connect_mode !== "unavailable"
+                        ? () => openSheet(group.entry!)
+                        : undefined
                     }
                   />
                 ))}
@@ -351,6 +450,14 @@ export function McpScreen() {
           )}
         </TabsContent>
       </Tabs>
+
+      <OAuthConnectSheet
+        open={oauthSheetOpen}
+        onOpenChange={setOauthSheetOpen}
+        app={selected}
+        profileId={activeProfile?.id}
+        existingNames={selected ? (connectionsByApp.names[selected.key] ?? []) : []}
+      />
 
       <ConnectSheet
         open={sheetOpen}

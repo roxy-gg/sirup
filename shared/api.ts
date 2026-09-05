@@ -13,6 +13,7 @@ import type {
   McpServerWithTools,
   McpTool,
   Profile,
+  StaticAuthType,
   User,
   Uuid,
 } from "./domain.js";
@@ -74,7 +75,7 @@ export interface SetProfileServersBody {
 export interface ConnectServerBody {
   name: string;
   url: string;
-  auth_type?: McpServer["auth_type"];
+  auth_type?: StaticAuthType;
   auth_header_name?: string | null;
   auth_value?: string | null;
 }
@@ -97,6 +98,17 @@ export interface ToolResponse {
 
 export interface SetToolEnabledBody {
   enabled: boolean;
+}
+
+/* ── managed MCP integrations ─────────────────────────────────────────── */
+
+export interface StartOAuthIntegrationBody {
+  name: string;
+  profile_id: Uuid;
+}
+
+export interface StartOAuthIntegrationResponse {
+  authorization_url: string;
 }
 
 /* ── logs ──────────────────────────────────────────────────────────────── */

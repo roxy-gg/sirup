@@ -1,9 +1,11 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { SSEClientTransport } from "@modelcontextprotocol/sdk/client/sse.js";
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import { config } from "../config.js";
 import type { McpServerModel } from "../database/models/index.js";
+import { oauthTransportOptionsForServer } from "../integrations/oauthRuntime.js";
 
 const CLIENT_INFO = { name: "sirup-gateway", version: "0.1.0" } as const;
 
@@ -15,16 +17,20 @@ export interface UpstreamConnection {
   transport: UpstreamTransport;
 }
 
-/** The subset of a server row needed to open a connection. */
+/** The subset of a server row needed to open a static or OAuth connection. */
 export type ConnectableServer = Pick<
   McpServerModel,
-  "url" | "auth_type" | "auth_header_name" | "auth_value"
+  | "id"
+  | "url"
+  | "integration_key"
+  | "auth_type"
+  | "auth_header_name"
+  | "auth_value"
 >;
 
 /**
- * Builds the auth headers for one upstream server. We deliberately support only
- * static credentials for now (bearer token or a custom header). OAuth-protected
- * upstreams need the full authorization-code dance, which is a separate feature.
+ * Builds headers for direct connections. Managed OAuth connections supply an
+ * SDK auth provider instead, so their tokens never pass through this path.
  */
 function buildHeaders(server: ConnectableServer): Record<string, string> {
   const headers: Record<string, string> = {};
@@ -54,15 +60,25 @@ export async function connectToUpstream(
 ): Promise<UpstreamConnection> {
   const url = new URL(server.url);
   const headers = buildHeaders(server);
+  const oauth = await oauthTransportOptionsForServer(server);
   const requestInit = Object.keys(headers).length > 0 ? { headers } : undefined;
 
   const client = new Client(CLIENT_INFO, { capabilities: {} });
 
   try {
-    const transport = new StreamableHTTPClientTransport(url, { requestInit });
+    const transport = new StreamableHTTPClientTransport(url, {
+      requestInit,
+      authProvider: oauth?.authProvider,
+      fetch: oauth?.fetch,
+    });
     await client.connect(transport);
     return { client, transport: "streamable-http" };
   } catch (streamableError) {
+    // OAuth failures are authorization events, never a signal to downgrade.
+    if (streamableError instanceof UnauthorizedError || oauth) {
+      throw streamableError;
+    }
+
     // A 4xx here usually means the server only speaks the legacy transport.
     try {
       const fallbackClient = new Client(CLIENT_INFO, { capabilities: {} });

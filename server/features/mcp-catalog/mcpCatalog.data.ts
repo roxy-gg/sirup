@@ -16,12 +16,30 @@ import type { CatalogEntry } from "../../../shared/domain.js";
  * `auth` records what the provider *requires*, which is not what we can do:
  *   none  -> connect immediately
  *   token -> paste a static key; works today
- *   oauth -> needs a browser redirect flow we have not built, so the UI marks
- *            it unavailable instead of offering a Connect that dead-ends
+ *   oauth -> needs a browser redirect flow. Entries with an `integration_key`
+ *            have a managed implementation; the rest are marked unavailable
+ *            instead of offering a Connect that dead-ends.
  */
-type CatalogSeed = Omit<CatalogEntry, "connected">;
+type CatalogSeed = Omit<
+  CatalogEntry,
+  "connected" | "connect_mode" | "availability_message"
+>;
 
 const CATALOG: readonly CatalogSeed[] = [
+  // ── Managed OAuth ─────────────────────────────────────────────────────
+  {
+    key: "gmail",
+    name: "Gmail",
+    category: "Communication",
+    description: "Search mail, read threads, manage labels, and draft replies.",
+    url: "https://gmailmcp.googleapis.com/mcp/v1",
+    auth: "oauth",
+    auth_type: "oauth",
+    auth_hint: "Sign in with Google. Each account is its own connection.",
+    icon: "gmail",
+    integration_key: "gmail",
+  },
+
   // ── No credential required ────────────────────────────────────────────
   {
     key: "deepwiki",

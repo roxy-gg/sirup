@@ -68,9 +68,7 @@ function AppRow({
   count: number;
   onSelect: (entry: CatalogEntry) => void;
 }) {
-  // OAuth providers need a browser redirect flow we have not built, so the row
-  // says so instead of offering a Connect button that leads nowhere.
-  const unavailable = app.auth === "oauth";
+  const unavailable = app.connect_mode === "unavailable";
   // Connecting an app you already have is a feature, not a mistake: a second
   // Gmail account, a staging and a production Sentry. Each connection gets its
   // own namespace, so the two never collide.
@@ -78,30 +76,10 @@ function AppRow({
 
   return (
     <div
-      role={interactive ? "button" : undefined}
-      tabIndex={interactive ? 0 : undefined}
-      onClick={interactive ? () => onSelect(app) : undefined}
-      onKeyDown={
-        interactive
-          ? (event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                event.preventDefault();
-                onSelect(app);
-              }
-            }
-          : undefined
-      }
       className={cn(
         "surface group flex items-center gap-3 rounded-xl bg-card p-3",
-        // Colour-only hover. A transform here made every card in the grid
-        // twitch as the pointer crossed it, which reads as noise on a list
-        // this dense.
         "transition-colors duration-[var(--duration-quick)]",
-        // The row is only clickable when the app can actually be connected,
-        // so the pointer is conditional -- the base rule cannot know that.
-        interactive && "cursor-pointer hover:bg-accent/40",
-        interactive &&
-          "focus-visible:outline-1 focus-visible:outline-offset-1 focus-visible:outline-ring focus-visible:outline-none",
+        interactive && "hover:bg-accent/40",
         unavailable && "opacity-60",
       )}
     >
@@ -117,11 +95,8 @@ function AppRow({
       </div>
 
       {unavailable ? (
-        <span
-          className="shrink-0 text-xs text-text-quaternary"
-          title="This provider requires an OAuth sign-in, which sirup does not support yet."
-        >
-          OAuth soon
+        <span className="max-w-24 shrink-0 text-right text-xs text-text-quaternary">
+          {app.availability_message ?? "Unavailable"}
         </span>
       ) : (
         <div className="flex shrink-0 items-center gap-1.5">
@@ -133,11 +108,8 @@ function AppRow({
           <Button
             variant="outline"
             size="sm"
-            onClick={(event) => {
-              // The whole row is clickable; don't fire the handler twice.
-              event.stopPropagation();
-              onSelect(app);
-            }}
+            onClick={() => onSelect(app)}
+            aria-label={`${count > 0 ? "Add another" : "Connect"} ${app.name} account`}
           >
             {count > 0 ? (
               <>

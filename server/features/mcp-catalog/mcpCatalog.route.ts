@@ -22,6 +22,6 @@ mcpCatalogRouter.get(
   asyncRoute(async (req: AuthedRequest, res) => {
     const { userId } = requireContext(req);
     const servers = await listServers(userId);
-    res.json({ catalog: logic.list(servers.map((server) => server.url)) });
+    res.json({ catalog: logic.list(servers) });
   }),
 );

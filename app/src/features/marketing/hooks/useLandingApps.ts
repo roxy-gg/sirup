@@ -82,6 +82,6 @@ export function useLandingApps() {
     visible,
     status,
     total: apps.length,
-    connectable: apps.filter((app) => app.auth !== "oauth").length,
+    connectable: apps.filter((app) => app.connect_mode !== "unavailable").length,
   };
 }

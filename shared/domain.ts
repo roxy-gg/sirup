@@ -44,19 +44,24 @@ export interface Profile {
   tool_count: number;
 }
 
-/** How a company authenticates to one upstream MCP server. */
-export type AuthType = "none" | "bearer" | "header";
+/** How a user authenticates to one upstream MCP server. */
+export type AuthType = "none" | "bearer" | "header" | "oauth";
+
+/** Auth methods accepted by the generic, non-redirect connect form. */
+export type StaticAuthType = Exclude<AuthType, "oauth">;
 
 /**
  * What an upstream server *requires*, which is not the same as what we can do.
  *
  * - "none"   — connect immediately, no credential.
  * - "token"  — paste a static API key or PAT. Works today.
- * - "oauth"  — needs a browser authorization-code flow against the provider.
- *              We cannot complete these yet, so the UI says so plainly rather
- *              than offering a Connect button that leads to a dead end.
+ * - "oauth"  — needs a browser authorization-code flow. A catalog entry is
+ *              connectable only when it has a configured managed integration.
  */
 export type CatalogAuth = "none" | "token" | "oauth";
+
+/** How the dashboard can establish a connection to this catalog entry. */
+export type CatalogConnectMode = "direct" | "oauth" | "unavailable";
 
 /** Discovery state of an upstream, as of the last connection attempt. */
 export type ServerStatus = "pending" | "connected" | "error";
@@ -67,6 +72,8 @@ export interface McpServer {
   /** Tool-name-safe prefix used for namespacing: `gmail__send_email`. */
   slug: string;
   url: string;
+  /** Registered integration handling provider-specific behavior, if any. */
+  integration_key: string | null;
   status: ServerStatus;
   status_message: string | null;
   enabled: boolean;
@@ -137,7 +144,7 @@ export interface CatalogEntry {
   url: string | null;
   /** What the provider requires. Drives whether Connect is offered. */
   auth: CatalogAuth;
-  /** Which auth type to preselect when `auth` is "token". */
+  /** Which auth type the corresponding connect flow uses. */
   auth_type: AuthType;
   /** Header name when the provider wants a custom header rather than bearer. */
   auth_header_name?: string;
@@ -145,5 +152,11 @@ export interface CatalogEntry {
   auth_hint: string;
   /** simple-icons slug for the brand mark, when one exists. */
   icon: string | null;
+  /** Direct form, managed OAuth redirect, or intentionally unavailable. */
+  connect_mode: CatalogConnectMode;
+  /** Explanation shown when this deployment cannot connect the entry. */
+  availability_message: string | null;
+  /** Registered server-side integration, such as `gmail`. */
+  integration_key?: string;
   connected: boolean;
 }
