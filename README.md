@@ -292,7 +292,7 @@ provider credentials and encryption key. See `.env.example`.
 | `JWT_SECRET` | ephemeral | **Required in production** |
 | `APP_ORIGIN` | local app URL in dev | Required for managed OAuth in production |
 | `CREDENTIAL_ENCRYPTION_KEY` | — | 32-byte base64 or 64-char hex key; required for managed OAuth |
-| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | — | Enables the managed Gmail integration |
+| `GOOGLE_OAUTH_CLIENT_ID` / `GOOGLE_OAUTH_CLIENT_SECRET` | - | Enables Gmail, Drive, Sheets, Docs, and Slides |
 | `PGHOST` / `PGPORT` / `PGUSER` / `PGPASSWORD` / `PGDATABASE` | — | Preferred; what compose uses |
 | `DATABASE_URL` | `postgres://sirup:sirup@localhost:5432/sirup` | Fallback when `PGHOST` is unset |
 | `DATABASE_SSL` | `false` | `true` only for a managed provider |
@@ -311,9 +311,9 @@ and the audit log.
 
 Not built yet, and worth being honest about:
 
-- **Generic OAuth for upstreams.** Gmail has a managed OAuth integration with
-  encrypted per-account grants. Other OAuth providers still need an explicit,
-  reviewed integration before they can be connected.
+- **Generic OAuth for upstreams.** The five Google Workspace apps have managed
+  OAuth integrations with encrypted per-account grants. Other OAuth providers
+  still need an explicit, reviewed integration before they can be connected.
 - **Teams.** One user per company. No invites or roles.
 - **Skills.** The nav entry is a placeholder. Skills-over-MCP is still an open
   working group at the MCP project, and guessing at the shape now would mean

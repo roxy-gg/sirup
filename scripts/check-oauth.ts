@@ -295,6 +295,36 @@ try {
   const work = await connectAccount("Gmail work");
   const personal = await connectAccount("Gmail personal");
 
+  // --- every registered integration is coherently configured ---
+  const { listOAuthIntegrations } = await import(
+    "../server/integrations/registry.js"
+  );
+  const registered = listOAuthIntegrations();
+  t.check(
+    "all five Google Workspace integrations are registered",
+    registered.length === 5,
+    registered.map((i) => i.key).join(", "),
+  );
+  t.check(
+    "every integration requests write scopes, not read-only",
+    registered.every((integration) =>
+      integration.scopes.every((scope) => !scope.endsWith(".readonly")),
+    ),
+  );
+  t.check(
+    "every integration pins its own MCP origin",
+    registered.every((integration) =>
+      integration.allowedOrigins.has(new URL(integration.serverUrl).origin),
+    ),
+  );
+  t.check(
+    "every integration pins Google's issuer",
+    registered.every(
+      (integration) =>
+        integration.authorizationIssuer === "https://accounts.google.com",
+    ),
+  );
+
   // --- scopes: full access, or the tools silently 403 later ---
   const { gmailIntegration } = await import("../server/integrations/gmail.js");
   t.check(

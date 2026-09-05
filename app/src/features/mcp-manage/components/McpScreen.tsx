@@ -360,9 +360,9 @@ export function McpScreen() {
         {/* ── All apps: the default view ──────────────────────────────── */}
         <TabsContent value="apps" className="flex flex-col gap-4">
           <p className="text-sm text-muted-foreground">
-            {catalog.connectableCount} apps are ready to connect. Gmail uses a
-            secure Google sign-in; other OAuth providers stay unavailable until
-            they have a reviewed integration.
+            {catalog.connectableCount} apps are ready to connect. Google
+            Workspace apps use a secure Google sign-in; other OAuth providers
+            stay unavailable until they have a reviewed integration.
           </p>
 
           <div className="flex flex-wrap gap-1.5">

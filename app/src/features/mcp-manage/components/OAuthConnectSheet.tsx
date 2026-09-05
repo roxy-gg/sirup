@@ -114,12 +114,12 @@ export function OAuthConnectSheet({
                 id="oauth-account-name"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder={app?.name ?? "Work Gmail"}
+                placeholder={app?.name ?? "Work account"}
                 required
               />
               <FieldDescription>
                 This label creates a separate tool namespace, so you can connect
-                personal, work, and additional Gmail accounts independently.
+                personal, work, and additional accounts independently.
               </FieldDescription>
             </Field>
 
@@ -127,24 +127,23 @@ export function OAuthConnectSheet({
 
             <Alert role="note">
               <ShieldCheckIcon />
-              <AlertTitle>Full mailbox access</AlertTitle>
+              <AlertTitle>Full access to {app?.name ?? "this app"}</AlertTitle>
               <AlertDescription>
                 <p>
-                  Google asks you to approve full access to your mail, so every
-                  tool works — search, read, draft, label, trash, and spam. All
-                  23 land on your endpoint and you can disable any of them
-                  afterwards.
+                  Google asks you to approve read and write access, so every
+                  tool works rather than half of them failing later. All of them
+                  land on your endpoint and you can disable any afterwards.
                 </p>
                 <p>
-                  Email is untrusted input. Use a trusted MCP client and review
-                  agent actions before approving them.
+                  Documents and email are untrusted input. Use a trusted MCP
+                  client and review agent actions before approving them.
                 </p>
               </AlertDescription>
             </Alert>
 
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Gmail MCP is a Google Developer Preview. Your Google Cloud project
-              needs both the Gmail API and the Gmail MCP API enabled.
+              Google Workspace MCP is a Developer Preview. Your Google Cloud
+              project needs the matching product API and MCP API enabled.
             </p>
           </div>
 
