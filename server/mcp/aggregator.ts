@@ -23,6 +23,7 @@ export function namespaceToolName(slug: string, toolName: string): string {
 
 interface LogEntry {
   company_id: Uuid;
+  profile_id?: Uuid | null;
   server_id?: Uuid | null;
   method: string;
   tool_name?: string | null;
@@ -129,17 +130,19 @@ export async function refreshServerTools(
 }
 
 /**
- * The aggregated tool list for a company: every enabled tool from every enabled,
- * connected server, in MCP `tools/list` shape.
+ * The aggregated tool list for one profile.
  *
- * This reads from the cache rather than fanning out to each upstream. A cold
- * fan-out on every tools/list would make the gateway as slow as its slowest
- * upstream and would break the list entirely whenever one server is down.
+ * Scoped to the profile rather than the company: that is what makes two tokens
+ * on the same account expose different tools. Reads from the cache rather than
+ * fanning out to each upstream -- a cold fan-out on every tools/list would
+ * make the gateway as slow as its slowest upstream, and would break the list
+ * entirely whenever one server is down.
  */
-export async function listAggregatedTools(companyId: Uuid): Promise<Tool[]> {
+export async function listAggregatedTools(profileId: Uuid): Promise<Tool[]> {
   const rows = (await McpToolModel.query()
     .joinRelated("server")
-    .where("server.company_id", companyId)
+    .join("profile_servers as ps", "ps.server_id", "server.id")
+    .where("ps.profile_id", profileId)
     .where("server.enabled", true)
     .where("mcp_tools.enabled", true)
     .orderBy(["server.slug", "mcp_tools.name"])
@@ -157,7 +160,8 @@ export async function listAggregatedTools(companyId: Uuid): Promise<Tool[]> {
 
   return rows.map((row) => ({
     name: row.namespaced_name,
-    // Prefixing the source server helps the model pick between similar tools.
+    // Prefixing the source server helps the model pick between similar tools,
+    // and tells two accounts of the same app apart.
     description: row.description
       ? `[${row.server_name}] ${row.description}`
       : `Tool from ${row.server_name}.`,
@@ -170,18 +174,20 @@ export async function listAggregatedTools(companyId: Uuid): Promise<Tool[]> {
 }
 
 /**
- * Resolves a namespaced tool name back to its server and upstream name.
+ * Resolves a namespaced tool name back to its server, within one profile.
  *
- * The slug itself may contain "-" but never "__", so splitting on the first
- * separator is unambiguous.
+ * Scoping the lookup to the profile is a security boundary, not a
+ * convenience: without it, a token could call a tool its profile does not
+ * expose simply by naming it.
  */
 export async function resolveTool(
-  companyId: Uuid,
+  profileId: Uuid,
   namespacedName: string,
 ): Promise<{ server: McpServerModel; toolName: string } | null> {
   const tool = (await McpToolModel.query()
     .joinRelated("server")
-    .where("server.company_id", companyId)
+    .join("profile_servers as ps", "ps.server_id", "server.id")
+    .where("ps.profile_id", profileId)
     .where("server.enabled", true)
     .where("mcp_tools.enabled", true)
     .where("mcp_tools.namespaced_name", namespacedName)
@@ -199,20 +205,22 @@ export async function resolveTool(
 }
 
 /**
- * Executes an aggregated tool call: resolve the namespaced name, forward it to
- * the owning upstream under its original name, and log the outcome.
+ * Executes an aggregated tool call: resolve the namespaced name within the
+ * calling profile, forward it to the owning upstream under its original name,
+ * and log the outcome against both the company and the profile.
  */
 export async function callAggregatedTool(
-  companyId: Uuid,
+  scope: { companyId: Uuid; profileId: Uuid },
   namespacedName: string,
   args: Record<string, unknown> | undefined,
 ) {
   const startedAt = Date.now();
-  const resolved = await resolveTool(companyId, namespacedName);
+  const resolved = await resolveTool(scope.profileId, namespacedName);
 
   if (!resolved) {
     await recordLog({
-      company_id: companyId,
+      company_id: scope.companyId,
+      profile_id: scope.profileId,
       method: "tools/call",
       tool_name: namespacedName,
       status: "error",
@@ -229,7 +237,8 @@ export async function callAggregatedTool(
     const result = await callUpstreamTool(client, toolName, args);
 
     await recordLog({
-      company_id: companyId,
+      company_id: scope.companyId,
+      profile_id: scope.profileId,
       server_id: server.id,
       method: "tools/call",
       tool_name: namespacedName,
@@ -243,7 +252,8 @@ export async function callAggregatedTool(
     release(server.id);
 
     await recordLog({
-      company_id: companyId,
+      company_id: scope.companyId,
+      profile_id: scope.profileId,
       server_id: server.id,
       method: "tools/call",
       tool_name: namespacedName,

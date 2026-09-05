@@ -1,5 +1,6 @@
 import express from "express";
 import { authRouter } from "../features/auth/auth.route.js";
+import { profilesRouter } from "../features/profiles/profiles.route.js";
 import { mcpServersRouter } from "../features/mcp-servers/mcpServers.route.js";
 import { mcpLogsRouter } from "../features/mcp-logs/mcpLogs.route.js";
 import { mcpCatalogRouter } from "../features/mcp-catalog/mcpCatalog.route.js";
@@ -24,6 +25,7 @@ apiRouter.get("/public/apps", (_req, res) => {
 });
 
 apiRouter.use("/auth", authRouter);
+apiRouter.use("/profiles", profilesRouter);
 apiRouter.use("/mcp-servers", mcpServersRouter);
 apiRouter.use("/mcp-logs", mcpLogsRouter);
 apiRouter.use("/mcp-catalog", mcpCatalogRouter);

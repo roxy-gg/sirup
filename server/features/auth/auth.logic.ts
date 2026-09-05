@@ -3,8 +3,12 @@ import jwt from "jsonwebtoken";
 import { z } from "zod";
 import { config } from "../../config.js";
 import { ApiError } from "../../shared/errors.js";
-import { slugify, uniqueSlug, generateGatewayToken } from "../../shared/slug.js";
+import { slugify, uniqueSlug } from "../../shared/slug.js";
 import * as data from "./auth.data.js";
+import {
+  createDefault as createDefaultProfile,
+  list as listProfiles,
+} from "../profiles/profiles.logic.js";
 import type { CompanyModel, UserModel } from "../../database/models/index.js";
 import type { SessionResponse } from "../../../shared/api.js";
 import type { Uuid } from "../../../shared/domain.js";
@@ -110,12 +114,11 @@ export async function createCompany(
     const slug = uniqueSlug(base, taken);
 
     try {
-      const company = await data.insertCompany({
-        name,
-        slug,
-        gatewayToken: generateGatewayToken(),
-      });
+      const company = await data.insertCompany({ name, slug });
 
+      // Every company needs at least one profile: it is what carries the
+      // gateway token, so without one there is no way to reach the gateway.
+      await createDefaultProfile(company.id);
       await data.attachUserToCompany(user.id, company.id);
       return company;
     } catch (error) {
@@ -134,20 +137,24 @@ function isUniqueViolation(error: unknown): boolean {
   return sqlError?.code === "23505" || sqlError?.nativeError?.code === "23505";
 }
 
-/** The payload every screen bootstraps from: who am I, and what's my company. */
+/** The payload every screen bootstraps from: who am I, and what can I reach. */
 export async function getSession(userId: Uuid): Promise<SessionResponse> {
   const user = await data.findUserWithCompany(userId);
   if (!user) throw ApiError.unauthorized();
 
+  if (!user.company) {
+    return { user: { id: user.id, email: user.email }, company: null, profiles: [] };
+  }
+
   return {
     user: { id: user.id, email: user.email },
-    company: user.company
-      ? {
-          id: user.company.id,
-          name: user.company.name,
-          slug: user.company.slug,
-          gateway_token: user.company.gateway_token,
-        }
-      : null,
+    company: {
+      id: user.company.id,
+      name: user.company.name,
+      slug: user.company.slug,
+    },
+    // Profiles ship with the session because every screen needs them: the
+    // switcher, the endpoint panel, and the connect flow all read from here.
+    profiles: await listProfiles(user.company.id),
   };
 }

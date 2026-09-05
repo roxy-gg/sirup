@@ -1,7 +1,7 @@
 import express, { type NextFunction, type Request, type Response } from "express";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
-import { CompanyModel } from "../database/models/index.js";
-import { createGatewayServer } from "./gatewayServer.js";
+import { ProfileModel } from "../database/models/index.js";
+import { createGatewayServer, type GatewayScope } from "./gatewayServer.js";
 
 export const gatewayRouter = express.Router();
 
@@ -15,7 +15,7 @@ export const gatewayRouter = express.Router();
 
 /** A request that has passed gateway authentication. */
 interface GatewayRequest extends Request {
-  company?: CompanyModel;
+  scope?: GatewayScope;
 }
 
 /** Reads the gateway token from an Authorization header or ?token= query. */
@@ -32,7 +32,11 @@ function extractToken(req: Request): string | null {
 }
 
 /**
- * Reads the gateway token and resolves the company.
+ * Resolves the gateway token to a profile.
+ *
+ * The token identifies a profile, not a company: that is what lets one
+ * workspace hand different tool sets to different clients. The company comes
+ * along for logging and tenancy checks.
  *
  * Wrapped so a database failure returns a JSON-RPC error instead of rejecting
  * inside bare Express middleware, which would hang the client and crash the
@@ -57,9 +61,9 @@ async function authenticateGateway(
       return;
     }
 
-    const company = await CompanyModel.query().findOne({ gateway_token: token });
+    const profile = await ProfileModel.query().findOne({ gateway_token: token });
 
-    if (!company) {
+    if (!profile) {
       res.set("WWW-Authenticate", 'Bearer realm="sirup.gg", error="invalid_token"');
       res.status(401).json({
         jsonrpc: "2.0",
@@ -69,7 +73,11 @@ async function authenticateGateway(
       return;
     }
 
-    req.company = company;
+    req.scope = {
+      companyId: profile.company_id,
+      profileId: profile.id,
+      profileName: profile.name,
+    };
     next();
   } catch (error) {
     console.error("[gateway] auth failed:", error);
@@ -90,10 +98,10 @@ async function authenticateGateway(
  * aggregator holds the only long-lived state, in the upstream connection pool.
  */
 gatewayRouter.post("/", authenticateGateway, async (req: GatewayRequest, res) => {
-  const company = req.company;
-  if (!company) return; // authenticateGateway already answered.
+  const scope = req.scope;
+  if (!scope) return; // authenticateGateway already answered.
 
-  const server = createGatewayServer(company);
+  const server = createGatewayServer(scope);
   const transport = new StreamableHTTPServerTransport({
     sessionIdGenerator: undefined,
     enableJsonResponse: true,

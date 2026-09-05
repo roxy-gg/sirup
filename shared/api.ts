@@ -12,6 +12,7 @@ import type {
   McpServer,
   McpServerWithTools,
   McpTool,
+  Profile,
   User,
   Uuid,
 } from "./domain.js";
@@ -38,6 +39,34 @@ export interface CreateCompanyBody {
 export interface SessionResponse {
   user: User | null;
   company: Company | null;
+  /** Every profile in the company. Empty until onboarding finishes. */
+  profiles: Profile[];
+}
+
+/* ── profiles ──────────────────────────────────────────────────────────── */
+
+export interface CreateProfileBody {
+  name: string;
+  /** Connections to attach up front. Defaults to none. */
+  server_ids?: Uuid[];
+}
+
+export interface UpdateProfileBody {
+  name?: string;
+  is_default?: boolean;
+}
+
+export interface ProfileListResponse {
+  profiles: Profile[];
+}
+
+export interface ProfileResponse {
+  profile: Profile;
+}
+
+/** Replaces the whole attachment set for a profile. */
+export interface SetProfileServersBody {
+  server_ids: Uuid[];
 }
 
 /* ── mcp servers ───────────────────────────────────────────────────────── */

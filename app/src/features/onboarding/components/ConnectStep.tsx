@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { StaggerReveal } from "./StaggerReveal";
 import { CopyField } from "./CopyField";
-import type { Company } from "@shared/domain";
+import type { Profile } from "@shared/domain";
 
 /**
  * COMPONENT -- step 3: the payoff.
@@ -11,13 +11,14 @@ import type { Company } from "@shared/domain";
  * again -- which is the entire pitch, so the screen states it plainly.
  */
 interface ConnectStepProps {
-  company: Company | null;
+  /** The default profile, which carries the token a client will use. */
+  profile: Profile | undefined;
   onContinue: () => void;
 }
 
-export function ConnectStep({ company, onContinue }: ConnectStepProps) {
+export function ConnectStep({ profile, onContinue }: ConnectStepProps) {
   const endpoint = `${window.location.origin}/mcp`;
-  const token = company?.gateway_token ?? "";
+  const token = profile?.gateway_token ?? "";
 
   return (
     <StaggerReveal className="flex flex-col gap-6">

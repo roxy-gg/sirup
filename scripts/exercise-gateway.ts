@@ -12,7 +12,7 @@ const session = await api.call<SessionResponse>("POST", "/auth/login", {
   email: "demo@sirup.gg",
   password: "demo12345",
 });
-const token = session.payload.company?.gateway_token;
+const token = session.payload.profiles.find((p) => p.is_default)?.gateway_token;
 if (!token) throw new Error("Run `npm run seed:demo` first.");
 
 const listed = await mcpCall<{ tools: Tool[] }>(token, "tools/list", {}, 1);

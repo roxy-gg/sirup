@@ -61,8 +61,8 @@ const serverId = servers[0]!.id;
 await client.query("BEGIN");
 
 const { rows: scratch } = await client.query<{ id: string }>(
-  `INSERT INTO companies (name, slug, gateway_token)
-   VALUES ('Index Probe', 'index-probe-' || gen_random_uuid(), 'probe_' || gen_random_uuid())
+  `INSERT INTO companies (name, slug)
+   VALUES ('Index Probe', 'index-probe-' || gen_random_uuid())
    RETURNING id`,
 );
 const probeId = scratch[0]!.id;
@@ -71,6 +71,17 @@ const probeId = scratch[0]!.id;
 // realistic and, importantly, makes the 24h window *selective* -- with every
 // row inside the window a sequential scan is genuinely the right plan, and
 // the check would be asserting something false.
+//
+// Rows are split across several companies for the same reason: if one company
+// owns ~all of the table, filtering by it is not selective either, and the
+// planner correctly seq-scans no matter how good the index is.
+const { rows: siblings } = await client.query<{ id: string }>(
+  `INSERT INTO companies (name, slug)
+   SELECT 'Index Sibling ' || i, 'index-sibling-' || gen_random_uuid()
+   FROM generate_series(1, 9) AS i
+   RETURNING id`,
+);
+
 await client.query(
   `INSERT INTO mcp_logs (company_id, method, status, duration_ms, created_at)
    SELECT $1,
@@ -81,6 +92,17 @@ await client.query(
    FROM generate_series(1, 43200) AS i`,
   [probeId],
 );
+
+// Nine more companies of the same size, so the probe is ~10% of the table.
+for (const sibling of siblings) {
+  await client.query(
+    `INSERT INTO mcp_logs (company_id, method, status, created_at)
+     SELECT $1, 'tools/call', 'ok', now() - (i || ' minutes')::interval
+     FROM generate_series(1, 43200) AS i`,
+    [sibling.id],
+  );
+}
+
 await client.query("ANALYZE mcp_logs");
 
 const keysetPlan = await planFor(
@@ -147,13 +169,30 @@ const serversPlan = await planFor(
 );
 t.check("server list uses an index", usesIndex(serversPlan), indexNames(serversPlan));
 
-const gatewayPlan = await planFor("SELECT * FROM companies WHERE gateway_token = $1", [
+// The gateway resolves a token to a profile on every single request, so this
+// has to be an index hit rather than a scan of every profile.
+const gatewayPlan = await planFor("SELECT * FROM profiles WHERE gateway_token = $1", [
   "sirup_whatever",
 ]);
 t.check(
   "gateway token lookup uses the unique index",
-  gatewayPlan.includes("companies_gateway_token_unique"),
+  gatewayPlan.includes("profiles_gateway_token_unique"),
   indexNames(gatewayPlan),
+);
+
+// tools/list joins from the profile through the attachment table on every
+// request, so that join must be indexed too.
+const profileToolsPlan = await planFor(
+  `SELECT t.* FROM mcp_tools t
+   JOIN mcp_servers s ON s.id = t.server_id
+   JOIN profile_servers ps ON ps.server_id = s.id
+   WHERE ps.profile_id = $1 AND s.enabled = true AND t.enabled = true`,
+  ["00000000-0000-0000-0000-000000000000"],
+);
+t.check(
+  "profile tool lookup avoids a sequential scan",
+  usesIndex(profileToolsPlan) && !scansSequentially(profileToolsPlan),
+  indexNames(profileToolsPlan),
 );
 
 const userPlan = await planFor("SELECT * FROM users WHERE email = $1", ["a@b.com"]);

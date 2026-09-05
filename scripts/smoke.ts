@@ -60,7 +60,8 @@ t.check("gateway rejects a missing token", noToken.status === 401, noToken.statu
 const company = await api.call<SessionResponse>("POST", "/auth/company", {
   name: "Acme Inc",
 });
-const token = company.payload?.company?.gateway_token ?? "";
+const profile = company.payload.profiles.find((p) => p.is_default)!;
+const token = profile.gateway_token;
 t.check("company creation mints a gateway token", Boolean(token));
 // Slugs are globally unique, so a rerun against a warm DB gets a suffix.
 t.check(
@@ -94,6 +95,12 @@ if (!isLive) {
     server.tool_count > 0,
     `${server.tool_count} tools`,
   );
+
+  // Exposing is a separate step from connecting: a connection belongs to
+  // whichever profiles attach it.
+  await api.call("PUT", `/profiles/${profile.id}/servers`, {
+    server_ids: [server.id],
+  });
 }
 
 // --- speak MCP to the gateway ---
@@ -109,7 +116,9 @@ const initialized = await mcpCall<{ serverInfo: { name: string } }>(
 );
 t.check(
   "gateway completes initialize",
-  initialized.payload?.result?.serverInfo?.name === "sirup-gg",
+  // The server name now carries the profile, so a client connected to several
+  // can tell them apart.
+  initialized.payload?.result?.serverInfo?.name?.startsWith("sirup-gg"),
   JSON.stringify(initialized.payload?.result?.serverInfo ?? initialized.payload),
 );
 

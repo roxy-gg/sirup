@@ -46,7 +46,7 @@ export class ApiClient {
   private cookie = "";
 
   async call<T = unknown>(
-    method: "GET" | "POST" | "PATCH" | "DELETE",
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
     path: string,
     body?: unknown,
   ): Promise<{ status: number; payload: T & Partial<ApiErrorBody> }> {

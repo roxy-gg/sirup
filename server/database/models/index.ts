@@ -5,7 +5,6 @@ import type { Uuid } from "../../../shared/domain.js";
 export class CompanyModel extends BaseModel {
   name!: string;
   slug!: string;
-  gateway_token!: string;
 
   static override get tableName(): string {
     return "companies";
@@ -13,7 +12,6 @@ export class CompanyModel extends BaseModel {
 
   // Evaluated lazily by Objection, so the circular model imports are safe.
   static override get relationMappings(): RelationMappings {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     return {
       users: {
         relation: BaseModel.HasManyRelation,
@@ -24,6 +22,54 @@ export class CompanyModel extends BaseModel {
         relation: BaseModel.HasManyRelation,
         modelClass: () => McpServerModel as unknown as typeof Model,
         join: { from: "companies.id", to: "mcp_servers.company_id" },
+      },
+      profiles: {
+        relation: BaseModel.HasManyRelation,
+        modelClass: () => ProfileModel as unknown as typeof Model,
+        join: { from: "companies.id", to: "profiles.company_id" },
+      },
+    };
+  }
+}
+
+/**
+ * A named subset of the company's connections, with its own gateway token.
+ *
+ * The company owns connections; a profile decides which to expose. Attaching
+ * is many-to-many in both directions: a connection can appear in several
+ * profiles, and a profile holds many connections.
+ */
+export class ProfileModel extends BaseModel {
+  company_id!: Uuid;
+  name!: string;
+  slug!: string;
+  gateway_token!: string;
+  is_default!: boolean;
+
+  servers?: McpServerModel[];
+
+  static override get tableName(): string {
+    return "profiles";
+  }
+
+  static override get relationMappings(): RelationMappings {
+    return {
+      company: {
+        relation: BaseModel.BelongsToOneRelation,
+        modelClass: () => CompanyModel as unknown as typeof Model,
+        join: { from: "profiles.company_id", to: "companies.id" },
+      },
+      servers: {
+        relation: BaseModel.ManyToManyRelation,
+        modelClass: () => McpServerModel as unknown as typeof Model,
+        join: {
+          from: "profiles.id",
+          through: {
+            from: "profile_servers.profile_id",
+            to: "profile_servers.server_id",
+          },
+          to: "mcp_servers.id",
+        },
       },
     };
   }
@@ -73,6 +119,7 @@ export class McpServerModel extends BaseModel {
   last_connected_at!: Date | null;
 
   tools?: McpToolModel[];
+  profiles?: ProfileModel[];
 
   static override get tableName(): string {
     return "mcp_servers";
@@ -97,6 +144,18 @@ export class McpServerModel extends BaseModel {
         relation: BaseModel.HasManyRelation,
         modelClass: () => McpToolModel as unknown as typeof Model,
         join: { from: "mcp_servers.id", to: "mcp_tools.server_id" },
+      },
+      profiles: {
+        relation: BaseModel.ManyToManyRelation,
+        modelClass: () => ProfileModel as unknown as typeof Model,
+        join: {
+          from: "mcp_servers.id",
+          through: {
+            from: "profile_servers.server_id",
+            to: "profile_servers.profile_id",
+          },
+          to: "profiles.id",
+        },
       },
     };
   }
@@ -131,6 +190,7 @@ export class McpToolModel extends BaseModel {
 export class McpLogModel extends BaseModel {
   company_id!: Uuid;
   server_id!: Uuid | null;
+  profile_id!: Uuid | null;
   method!: string;
   tool_name!: string | null;
   status!: "ok" | "error";

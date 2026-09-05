@@ -26,7 +26,8 @@ await api.call("POST", "/auth/register", {
 const session = await api.call<SessionResponse>("POST", "/auth/company", {
   name: "Connect Co",
 });
-const token = session.payload.company?.gateway_token ?? "";
+const profile = session.payload.profiles.find((p) => p.is_default)!;
+const token = profile.gateway_token;
 
 // --- the catalog must expose what the grid renders ---
 const catalog = await api.call<CatalogResponse>("GET", "/mcp-catalog");
@@ -75,6 +76,11 @@ t.check(
   "tools arrive enabled by default",
   server.tools.every((tool) => tool.enabled),
 );
+
+// Connecting stores the server; exposing it is a separate step, because a
+// connection can belong to several profiles or none. The UI attaches to
+// whichever profile is active -- here, the default one.
+await api.call("PUT", `/profiles/${profile.id}/servers`, { server_ids: [server.id] });
 
 // --- the catalog now marks it Added, so the grid stops offering Connect ---
 const after = await api.call<CatalogResponse>("GET", "/mcp-catalog");

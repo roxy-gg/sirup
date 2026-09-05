@@ -21,7 +21,7 @@ const session = await api.call<SessionResponse>("POST", "/auth/register", {
 const company = await api.call<SessionResponse>("POST", "/auth/company", {
   name: "Pagination Co",
 });
-const token = company.payload.company?.gateway_token ?? "";
+const token = company.payload.profiles.find((p) => p.is_default)?.gateway_token ?? "";
 
 // --- ids are UUIDs everywhere, not integers ---
 t.check(

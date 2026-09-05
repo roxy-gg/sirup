@@ -57,4 +57,4 @@ if (payload.servers.length === 0) {
 
 const final = await api.call<SessionResponse>("GET", "/auth/session");
 console.log(`\nSigned in as ${EMAIL} / ${PASSWORD}`);
-console.log(`Gateway token: ${final.payload.company?.gateway_token}\n`);
+console.log(`Gateway token: ${final.payload.profiles.find((p) => p.is_default)?.gateway_token}\n`);

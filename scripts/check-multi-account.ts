@@ -29,7 +29,8 @@ await api.call("POST", "/auth/register", {
 const session = await api.call<SessionResponse>("POST", "/auth/company", {
   name: "Multi Account Co",
 });
-const token = session.payload.company?.gateway_token ?? "";
+const profile = session.payload.profiles.find((p) => p.is_default)!;
+const token = profile.gateway_token;
 
 // --- two connections to the same endpoint, with different labels ----------
 const personal = await api.call<ServerResponse>("POST", "/mcp-servers", {
@@ -60,6 +61,12 @@ t.check(
   a.name === "DeepWiki personal" && b.name === "DeepWiki work",
   `${a.name} / ${b.name}`,
 );
+
+// Both accounts have to be attached to a profile before the gateway serves
+// them -- connecting stores the credential, a profile decides what is exposed.
+await api.call("PUT", `/profiles/${profile.id}/servers`, {
+  server_ids: [a.id, b.id],
+});
 
 // --- both appear in the connected list ------------------------------------
 const list = await api.call<ServerListResponse>("GET", "/mcp-servers");

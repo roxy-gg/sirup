@@ -16,7 +16,7 @@ import { DoneStep } from "./DoneStep";
  */
 export function OnboardingScreen() {
   const navigate = useNavigate();
-  const { company } = useSession();
+  const { company, profiles } = useSession();
   const { step, direction, error, isSubmitting, goTo, submitAccount, submitCompany } =
     useOnboarding();
 
@@ -57,7 +57,10 @@ export function OnboardingScreen() {
                 ) : null}
 
                 {effectiveStep === "connect" ? (
-                  <ConnectStep company={company} onContinue={() => goTo("done")} />
+                  <ConnectStep
+                    profile={profiles.find((p) => p.is_default)}
+                    onContinue={() => goTo("done")}
+                  />
                 ) : null}
 
                 {effectiveStep === "done" ? (

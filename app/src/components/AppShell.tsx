@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/hooks/useSession";
 import { ThemeToggle } from "@/features/theme/components/ThemeToggle";
+import { ProfileSwitcher } from "@/features/profiles/components/ProfileSwitcher";
 import { Wordmark } from "@/components/Logo";
 
 /**
@@ -33,11 +34,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     // height, dragging the sidebar down the page with it.
     <div className="flex h-dvh overflow-hidden bg-background">
       <aside className="theme-surface hidden w-60 shrink-0 flex-col border-r bg-sidebar md:flex">
-        <div className="flex flex-col gap-1 p-4">
-          <Wordmark />
-          <span className="truncate text-xs text-text-tertiary">
-            {company?.name ?? "Workspace"}
-          </span>
+        <div className="flex flex-col gap-2 p-3">
+          <Wordmark className="px-2" />
+          <ProfileSwitcher companyName={company?.name ?? "Workspace"} />
         </div>
 
         <Separator />

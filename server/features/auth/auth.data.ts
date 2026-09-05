@@ -44,15 +44,10 @@ export function listSlugsLike(base: string) {
     .select("slug");
 }
 
-export function insertCompany(input: {
-  name: string;
-  slug: string;
-  gatewayToken: string;
-}) {
+export function insertCompany(input: { name: string; slug: string }) {
   return CompanyModel.query().insert({
     name: input.name,
     slug: input.slug,
-    gateway_token: input.gatewayToken,
   });
 }
 

@@ -22,8 +22,26 @@ export interface Company {
   id: Uuid;
   name: string;
   slug: string;
-  /** The credential an MCP client presents to the gateway. */
+}
+
+/**
+ * A named subset of the company's connections, with its own gateway token.
+ *
+ * The company owns connections; a profile chooses which to expose. That is
+ * what makes "Frontend" and "Ops" serve different tool lists from the same
+ * pool of connected accounts.
+ */
+export interface Profile {
+  id: Uuid;
+  name: string;
+  slug: string;
+  /** The credential an MCP client presents for *this* profile. */
   gateway_token: string;
+  is_default: boolean;
+  /** How many connections are attached. */
+  server_count: number;
+  /** Tools this profile actually exposes, across its attached servers. */
+  tool_count: number;
 }
 
 /** How a company authenticates to one upstream MCP server. */
@@ -63,6 +81,8 @@ export interface McpServer {
   last_connected_at: IsoDateTime | null;
   created_at: IsoDateTime;
   updated_at: IsoDateTime;
+  /** Which profiles expose this connection. Present on list endpoints. */
+  profile_ids?: Uuid[];
 }
 
 /** A JSON Schema object describing a tool's arguments. */

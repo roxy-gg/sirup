@@ -16,7 +16,6 @@ const t = new Checks("Timestamps");
 const company = await CompanyModel.query().insert({
   name: "Timestamp Co",
   slug: `ts-${Date.now()}`,
-  gateway_token: `sirup_ts_${Date.now()}`,
 });
 
 const stored = await CompanyModel.query().findById(company.id);

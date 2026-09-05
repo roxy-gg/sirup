@@ -23,6 +23,7 @@ import { CopyField } from "@/features/onboarding/components/CopyField";
 import { ServerCard } from "./ServerCard";
 import { ConnectSheet } from "./ConnectSheet";
 import { setToolEnabled } from "../data/mcpServersApi";
+import { attachServerToProfile as attachToProfile } from "@/features/profiles/data/profilesApi";
 import type { ConnectServerBody } from "@shared/api";
 import type { CatalogEntry, McpServerWithTools, Uuid } from "@shared/domain";
 
@@ -34,7 +35,7 @@ import type { CatalogEntry, McpServerWithTools, Uuid } from "@shared/domain";
  * the connected list is where you go once there is something to manage.
  */
 export function McpScreen() {
-  const { company } = useSession();
+  const { activeProfile, refresh } = useSession();
   const servers = useMcpServers();
 
   const [tab, setTab] = useState("apps");
@@ -131,7 +132,16 @@ export function McpScreen() {
   async function handleConnect(
     payload: ConnectServerBody,
   ): Promise<McpServerWithTools> {
-    return servers.connect(payload);
+    const server = await servers.connect(payload);
+
+    // Attach to the profile you are looking at. Connecting from "Frontend"
+    // and having it silently land elsewhere would be surprising, and a
+    // connection attached to nothing serves no tools at all.
+    if (activeProfile) {
+      await attachToProfile(activeProfile.id, server.id);
+    }
+
+    return server;
   }
 
   async function handleSetToolEnabled(
@@ -145,12 +155,14 @@ export function McpScreen() {
   function handleDone(server: McpServerWithTools) {
     setCatalogKey((key) => key + 1);
     void servers.reload();
+    // Counts on the switcher and the endpoint panel just changed.
+    void refresh();
     setTab("connected");
 
     toast.success(`${server.name} connected`, {
       description: `${server.tool_count} tool${
         server.tool_count === 1 ? "" : "s"
-      } now available on your endpoint.`,
+      } added to ${activeProfile?.name ?? "your profile"}.`,
     });
   }
 
@@ -191,20 +203,26 @@ export function McpScreen() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* ── Your endpoint: the thing you came here to copy ─────────────── */}
       <section className="surface flex flex-col gap-4 rounded-2xl bg-card p-6">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-lg font-semibold tracking-tight">Your MCP endpoint</h1>
-          <p className="text-sm text-text-tertiary">
-            {servers.totalTools} tool{servers.totalTools === 1 ? "" : "s"} from{" "}
-            {servers.servers.length} app{servers.servers.length === 1 ? "" : "s"}.
-            Point any MCP client here and it sees all of them.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-lg font-semibold tracking-tight">
+              {activeProfile?.name ?? "Your"} endpoint
+            </h1>
+            <p className="text-sm text-text-tertiary">
+              This token exposes {activeProfile?.tool_count ?? 0} tool
+              {activeProfile?.tool_count === 1 ? "" : "s"} from{" "}
+              {activeProfile?.server_count ?? 0} connection
+              {activeProfile?.server_count === 1 ? "" : "s"}. Other profiles have
+              their own.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <CopyField label="Endpoint URL" value={endpoint} className="flex-1" />
           <CopyField
-            label="Gateway token"
-            value={company?.gateway_token ?? ""}
+            label={`${activeProfile?.name ?? "Profile"} token`}
+            value={activeProfile?.gateway_token ?? ""}
             className="flex-1"
           />
         </div>
