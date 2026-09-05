@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { PlusIcon, SearchIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { useSession } from "@/features/auth/hooks/useSession";
 import { useMcpServers } from "../hooks/useMcpServers";
 import { useMcpCatalog } from "@/features/mcp-discover/hooks/useMcpCatalog";
 import { AppGrid } from "@/features/mcp-discover/components/AppGrid";
+import { AppIcon } from "@/components/AppIcon";
 import { CopyField } from "@/features/onboarding/components/CopyField";
 import { ServerCard } from "./ServerCard";
 import { ConnectSheet } from "./ConnectSheet";
@@ -44,6 +45,83 @@ export function McpScreen() {
 
   const catalog = useMcpCatalog(catalogKey);
   const endpoint = `${window.location.origin}/mcp`;
+
+  /**
+   * How many connections exist per catalog entry, and under what labels.
+   *
+   * Matched on URL because that is what identifies the upstream -- the label
+   * is deliberately free-form so two accounts on the same app can be told
+   * apart. Normalised because several providers require a trailing slash, so
+   * the stored URL and the catalog URL can differ by one character.
+   */
+  const connectionsByApp = useMemo(() => {
+    const normalise = (url: string) => url.replace(/\/+$/, "").toLowerCase();
+    const byUrl = new Map<string, string[]>();
+
+    for (const server of servers.servers) {
+      const key = normalise(server.url);
+      byUrl.set(key, [...(byUrl.get(key) ?? []), server.name]);
+    }
+
+    const counts: Record<string, number> = {};
+    const names: Record<string, string[]> = {};
+    for (const entry of catalog.all) {
+      if (!entry.url) continue;
+      const matches = byUrl.get(normalise(entry.url)) ?? [];
+      if (matches.length > 0) {
+        counts[entry.key] = matches.length;
+        names[entry.key] = matches;
+      }
+    }
+    return { counts, names };
+  }, [servers.servers, catalog.all]);
+
+  /**
+   * Connected servers grouped by the app they point at.
+   *
+   * Two accounts on the same app belong next to each other; a flat list sorted
+   * by connect date scatters them. Servers with no catalog match (a custom
+   * endpoint) each form their own group of one.
+   */
+  const groupedServers = useMemo(() => {
+    const normalise = (url: string) => url.replace(/\/+$/, "").toLowerCase();
+    const entryByUrl = new Map(
+      catalog.all
+        .filter((entry) => entry.url)
+        .map((entry) => [normalise(entry.url!), entry] as const),
+    );
+
+    const groups = new Map<
+      string,
+      {
+        key: string;
+        label: string;
+        icon: string | null;
+        entry: CatalogEntry | undefined;
+        servers: typeof servers.servers;
+      }
+    >();
+
+    for (const server of servers.servers) {
+      const entry = entryByUrl.get(normalise(server.url));
+      // Unmatched servers key on their own id, so they never merge together.
+      const key = entry?.key ?? `custom:${server.id}`;
+      const existing = groups.get(key);
+
+      if (existing) existing.servers.push(server);
+      else {
+        groups.set(key, {
+          key,
+          label: entry?.name ?? server.name,
+          icon: entry?.icon ?? null,
+          entry,
+          servers: [server],
+        });
+      }
+    }
+
+    return [...groups.values()];
+  }, [servers.servers, catalog.all]);
 
   function openSheet(app: CatalogEntry) {
     setSelected(app);
@@ -180,12 +258,13 @@ export function McpScreen() {
           <AppGrid
             apps={catalog.catalog}
             status={catalog.status}
+            connectionCounts={connectionsByApp.counts}
             onSelect={openSheet}
           />
         </TabsContent>
 
         {/* ── Connected ───────────────────────────────────────────────── */}
-        <TabsContent value="connected" className="flex flex-col gap-3">
+        <TabsContent value="connected" className="flex flex-col gap-4">
           {servers.status === "loading" ? (
             Array.from({ length: 3 }).map((_, index) => (
               <Skeleton key={index} className="h-[92px] rounded-xl" />
@@ -207,15 +286,41 @@ export function McpScreen() {
               </EmptyContent>
             </Empty>
           ) : (
-            servers.servers.map((server) => (
-              <ServerCard
-                key={server.id}
-                server={server}
-                isBusy={servers.busyId === server.id}
-                onRefresh={(id) => void handleRefresh(id)}
-                onDisconnect={(id) => void handleDisconnect(id)}
-                onToggleEnabled={(id, enabled) => void handleToggleEnabled(id, enabled)}
-              />
+            // Grouped by app, so two accounts of the same thing sit together
+            // rather than scattered through a flat list by connect date.
+            groupedServers.map((group) => (
+              <div key={group.key} className="flex flex-col gap-2">
+                {group.servers.length > 1 ? (
+                  <div className="flex items-center gap-2 px-1">
+                    <AppIcon
+                      icon={group.icon}
+                      name={group.label}
+                      className="size-5 rounded border-0 bg-transparent"
+                    />
+                    <span className="text-mini font-medium">{group.label}</span>
+                    <span className="text-xs text-text-quaternary">
+                      {group.servers.length} accounts
+                    </span>
+                  </div>
+                ) : null}
+
+                {group.servers.map((server) => (
+                  <ServerCard
+                    key={server.id}
+                    server={server}
+                    icon={group.icon}
+                    isBusy={servers.busyId === server.id}
+                    onRefresh={(id) => void handleRefresh(id)}
+                    onDisconnect={(id) => void handleDisconnect(id)}
+                    onToggleEnabled={(id, enabled) =>
+                      void handleToggleEnabled(id, enabled)
+                    }
+                    onAddAnother={
+                      group.entry ? () => openSheet(group.entry!) : undefined
+                    }
+                  />
+                ))}
+              </div>
             ))
           )}
         </TabsContent>
@@ -225,6 +330,7 @@ export function McpScreen() {
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         app={selected}
+        existingNames={selected ? (connectionsByApp.names[selected.key] ?? []) : []}
         onConnect={handleConnect}
         onSetToolEnabled={handleSetToolEnabled}
         onDone={handleDone}

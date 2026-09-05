@@ -16,7 +16,7 @@
     "migrate": "knex --knexfile knexfile.ts migrate:latest",
     "migrate:rollback": "knex --knexfile knexfile.ts migrate:rollback",
     "migrate:make": "knex --knexfile knexfile.ts migrate:make",
-    "test": "npm run typecheck && npm run check:build && npm run check:surfaces && npm run check:catalog && npm run check:connect-flow && npm run check:connection && npm run check:smoke && npm run check:regression && npm run check:pagination && npm run check:pool && npm run check:timestamps && npm run check:indexes && npm run check:route",
+    "test": "npm run typecheck && npm run check:build && npm run check:surfaces && npm run check:catalog && npm run check:connect-flow && npm run check:multi-account && npm run check:connection && npm run check:smoke && npm run check:regression && npm run check:pagination && npm run check:pool && npm run check:timestamps && npm run check:indexes && npm run check:route",
     "check:build": "tsx scripts/check-build.ts",
     "check:connection": "tsx scripts/check-connection.ts",
     "check:smoke": "tsx scripts/smoke.ts",
@@ -36,7 +36,8 @@
     "check:catalog": "tsx scripts/check-catalog.ts",
     "check:connect-flow": "tsx scripts/check-connect-flow.ts",
     "check:surfaces": "tsx scripts/check-surfaces.ts",
-    "gen:app-icons": "tsx scripts/gen-app-icons.ts"
+    "gen:app-icons": "tsx scripts/gen-app-icons.ts",
+    "check:multi-account": "tsx scripts/check-multi-account.ts"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",

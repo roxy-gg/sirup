@@ -51,6 +51,8 @@ export function useMcpCatalog(refreshKey = 0) {
 
   return {
     catalog: visible,
+    /** The unfiltered list, for callers that need to match against all apps. */
+    all: catalog,
     categories,
     category,
     setCategory,

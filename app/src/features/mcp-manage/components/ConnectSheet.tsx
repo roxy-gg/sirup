@@ -43,6 +43,8 @@ interface ConnectSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   app: CatalogEntry | null;
+  /** Labels already used for this app, so a second account gets a fresh one. */
+  existingNames: string[];
   onConnect: (payload: ConnectServerBody) => Promise<McpServerWithTools>;
   onSetToolEnabled: (serverId: string, toolId: string, enabled: boolean) => Promise<void>;
   onDone: (server: McpServerWithTools) => void;
@@ -50,10 +52,29 @@ interface ConnectSheetProps {
 
 type Phase = "configure" | "connecting" | "permissions";
 
+/**
+ * Suggests a label that does not collide with what is already connected.
+ *
+ * Connecting a second account to the same app is expected -- two Gmail
+ * inboxes, a staging and a production Sentry -- and the label is what tells
+ * them apart in the UI *and* in the tool namespace the model sees. Defaulting
+ * the second one to "Gmail 2" beats leaving the field blank or, worse,
+ * pre-filling a name that is already taken.
+ */
+function suggestLabel(appName: string, existing: string[]): string {
+  if (!existing.includes(appName)) return appName;
+  for (let i = 2; i < 50; i += 1) {
+    const candidate = `${appName} ${i}`;
+    if (!existing.includes(candidate)) return candidate;
+  }
+  return appName;
+}
+
 export function ConnectSheet({
   open,
   onOpenChange,
   app,
+  existingNames,
   onConnect,
   onSetToolEnabled,
   onDone,
@@ -77,7 +98,7 @@ export function ConnectSheet({
   useEffect(() => {
     if (!open) return;
     setPhase("configure");
-    setName(app && !isCustom ? app.name : "");
+    setName(app && !isCustom ? suggestLabel(app.name, existingNames) : "");
     setUrl(app?.url ?? "");
     setAuthType(app?.auth_type ?? "none");
     setHeaderName(app?.auth_header_name ?? "");
@@ -86,7 +107,7 @@ export function ConnectSheet({
     setServer(null);
     setDisabledTools(new Set());
     setToolQuery("");
-  }, [open, app, isCustom]);
+  }, [open, app, isCustom, existingNames]);
 
   async function handleConnect(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -184,13 +205,17 @@ export function ConnectSheet({
             <div className="flex min-w-0 flex-col">
               <SheetTitle className="truncate">
                 {phase === "permissions"
-                  ? `${app?.name ?? "Server"} permissions`
-                  : `Connect ${app?.name ?? "a server"}`}
+                  ? `${name || app?.name} permissions`
+                  : existingNames.length > 0
+                    ? `Add another ${app?.name ?? "account"}`
+                    : `Connect ${app?.name ?? "a server"}`}
               </SheetTitle>
               <SheetDescription className="truncate">
                 {phase === "permissions"
                   ? "Choose exactly what your agents can call."
-                  : "Authenticate, then pick what your agents can do."}
+                  : existingNames.length > 0
+                    ? `You already have ${existingNames.length}. This one gets its own tools and permissions.`
+                    : "Authenticate, then pick what your agents can do."}
               </SheetDescription>
             </div>
           </div>
@@ -302,8 +327,17 @@ export function ConnectSheet({
                   required
                 />
                 <FieldDescription>
-                  Namespaces this server&rsquo;s tools, and tells two accounts of
-                  the same app apart.
+                  {existingNames.length > 0 ? (
+                    <>
+                      Already connected: {existingNames.join(", ")}. Give this one
+                      a different name so you and your agents can tell them apart.
+                    </>
+                  ) : (
+                    <>
+                      Namespaces this server&rsquo;s tools, and tells two accounts
+                      of the same app apart.
+                    </>
+                  )}
                 </FieldDescription>
               </Field>
 

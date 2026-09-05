@@ -10,46 +10,54 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AppIcon } from "@/components/AppIcon";
 import { cn } from "@/lib/utils";
 import { StatusBadge } from "./StatusBadge";
 import type { McpServer, Uuid } from "@shared/domain";
 
 /**
- * COMPONENT (stateless) -- one connected server row, matching the wireframe:
- * name and account on the left, actions on the right.
+ * COMPONENT (stateless) -- one connected account.
+ *
+ * The label is the account name, not the app name: a company can connect the
+ * same app twice, and the label plus the namespace are what tell "Gmail work"
+ * from "Gmail personal" here and in the tool list the model sees.
  */
 interface ServerCardProps {
   server: McpServer;
+  /** Brand mark for the app this account belongs to, when known. */
+  icon?: string | null;
   isBusy: boolean;
   onRefresh: (id: Uuid) => void;
   onDisconnect: (id: Uuid) => void;
   onToggleEnabled: (id: Uuid, enabled: boolean) => void;
+  /** Offered only when the app is in the catalog and can take another account. */
+  onAddAnother?: (() => void) | undefined;
 }
 
 export function ServerCard({
   server,
+  icon,
   isBusy,
   onRefresh,
   onDisconnect,
   onToggleEnabled,
+  onAddAnother,
 }: ServerCardProps) {
   return (
     <Card
       className={cn(
-        "theme-surface surface transition-opacity duration-[var(--duration-fast)]",
+        "transition-opacity duration-[var(--duration-fast)]",
         isBusy && "opacity-60",
       )}
     >
-      <CardContent className="flex items-center gap-4 p-4">
+      <CardContent className="flex items-center gap-3 p-4">
+        <AppIcon icon={icon} name={server.name} />
+
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex items-center gap-2">
-            <span className="truncate font-medium">{server.name}</span>
+            <span className="truncate text-sm font-medium">{server.name}</span>
             <StatusBadge status={server.status} enabled={server.enabled} />
           </div>
-
-          <span className="truncate text-xs text-muted-foreground" title={server.url}>
-            {server.url}
-          </span>
 
           {server.status === "error" && server.status_message ? (
             <span
@@ -59,7 +67,7 @@ export function ServerCard({
               {server.status_message}
             </span>
           ) : (
-            <span className="text-xs text-muted-foreground">
+            <span className="truncate text-xs text-text-tertiary">
               {server.tool_count} tool{server.tool_count === 1 ? "" : "s"} ·{" "}
               <code className="font-mono">{server.slug}__*</code>
             </span>
@@ -90,10 +98,15 @@ export function ServerCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuGroup>
+                {onAddAnother ? (
+                  <DropdownMenuItem onSelect={onAddAnother}>
+                    Add another account
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   onSelect={() => onToggleEnabled(server.id, !server.enabled)}
                 >
-                  {server.enabled ? "Pause server" : "Resume server"}
+                  {server.enabled ? "Pause account" : "Resume account"}
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />

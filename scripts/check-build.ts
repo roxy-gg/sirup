@@ -42,7 +42,11 @@ const sharedFiles = walk("shared", [".ts"]);
 const unresolved: string[] = [];
 for (const file of [...appFiles, ...serverFiles, ...sharedFiles]) {
   const source = fs.readFileSync(file, "utf8");
-  for (const match of source.matchAll(/from\s+["']([^"'.@/][^"']*|@[^"']+)["']/g)) {
+  // Anchored to the start of a line so prose containing the word "from"
+  // followed by a quoted phrase is not mistaken for an import.
+  for (const match of source.matchAll(
+    /^\s*(?:import|export)[^'"\n]*\sfrom\s+["']([^"'.@/][^"']*|@[^"']+)["']/gm,
+  )) {
     const specifier = match[1]!;
     if (specifier.startsWith("node:")) continue;
     // "@/..." and "@shared/..." are path aliases, not scoped packages.
@@ -65,7 +69,9 @@ t.check(
 const missingExt: string[] = [];
 for (const file of [...serverFiles, ...sharedFiles]) {
   const source = fs.readFileSync(file, "utf8");
-  for (const match of source.matchAll(/from\s+["'](\.[^"']+)["']/g)) {
+  for (const match of source.matchAll(
+    /^\s*(?:import|export)[^'"\n]*\sfrom\s+["'](\.[^"']+)["']/gm,
+  )) {
     if (!match[1]!.endsWith(".js")) missingExt.push(`${file} -> ${match[1]}`);
   }
 }
