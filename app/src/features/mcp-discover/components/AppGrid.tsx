@@ -75,10 +75,12 @@ function AppRow({
           : undefined
       }
       className={cn(
-        "theme-surface group flex items-center gap-3 rounded-xl border bg-card p-3",
+        "theme-surface surface group flex items-center gap-3 rounded-xl bg-card p-3",
         "transition-all duration-[var(--duration-fast)] ease-[var(--ease-smooth-out)]",
         interactive &&
-          "cursor-pointer hover:-translate-y-px hover:border-foreground/25 hover:shadow-sm",
+          // Lifting brightens the top edge rather than adding a blur, so the
+          // hover reads as the card catching more light.
+          "cursor-pointer hover:-translate-y-px hover:border-[var(--border-translucent-strong)] hover:brightness-[1.04]",
         interactive &&
           "focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none",
         unavailable && "opacity-60",

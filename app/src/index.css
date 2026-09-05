@@ -21,6 +21,8 @@
 :root {
   --radius: 8px;
 
+  --border-hairline: 1px;
+
   /* Surfaces, lightest to deepest. */
   --background: #ffffff;
   --foreground: #282a30;
@@ -52,6 +54,17 @@
   --input: #e4e2e4;
   --ring: #86848d;
 
+  /* Translucent borders composite over whatever they sit on, so one token
+     works on every surface depth. A solid grey has to be re-picked per
+     background; this does not. */
+  --border-translucent: #0000000d;
+  --border-translucent-strong: #00000014;
+  /* The inner top highlight and bottom shade that give a card its lit edge. */
+  --edge-highlight: #ffffffb3;
+  --edge-shade: #0000001c;
+  /* Flat scrim stacked over an opaque surface to lift it one step. */
+  --surface-tint: #00000005;
+
   --sidebar: #f9f8f9;
   --sidebar-foreground: #282a30;
   --sidebar-primary: #282a30;
@@ -67,12 +80,13 @@
   --text-tertiary: #6f6e77;
   --text-quaternary: #86848d;
 
-  /* Layered shadows — many small offsets rather than one big blur, so an
-     elevated surface reads as lifted instead of smudged. */
-  --shadow-tiny: 0px 1px 1px 0px #00000017;
-  --shadow-low: 0px 1px 4px -1px #00000017;
-  --shadow-medium: 0px 3px 12px #00000017;
-  --shadow-high: 0px 7px 24px #0000000f;
+  /* Only overlays get a real shadow now; everything else uses a lit edge.
+     Layered small offsets rather than one big blur, so a floating surface
+     reads as lifted instead of smudged. */
+  --shadow-overlay:
+    0px 8px 2px 0px #0000, 0px 5px 2px 0px #00000003,
+    0px 3px 2px 0px #0000000a, 0px 1px 1px 0px #00000012,
+    0px 0px 1px 0px #00000014, 0px 12px 32px -8px #00000014;
 }
 
 .dark {
@@ -106,6 +120,14 @@
   --input: #34343a;
   --ring: #62666d;
 
+  --border-translucent: #ffffff0d;
+  --border-translucent-strong: #ffffff14;
+  /* Dark mode inverts the lighting: the top edge is lit by a white hairline,
+     and there is no bottom shade because there is nothing darker to shade to. */
+  --edge-highlight: #ffffff12;
+  --edge-shade: #00000040;
+  --surface-tint: #ffffff05;
+
   --sidebar: #0f1011;
   --sidebar-foreground: #f7f8f8;
   --sidebar-primary: #f7f8f8;
@@ -119,10 +141,10 @@
   --text-tertiary: #8a8f98;
   --text-quaternary: #62666d;
 
-  --shadow-tiny: 0px 1px 1px 0px #00000040;
-  --shadow-low: 0px 2px 4px #0000001a;
-  --shadow-medium: 0px 4px 24px #0003;
-  --shadow-high: 0px 7px 32px #00000059;
+  --shadow-overlay:
+    0px 8px 2px 0px #0000, 0px 5px 2px 0px #00000008,
+    0px 3px 2px 0px #00000014, 0px 1px 1px 0px #0000001f,
+    0px 0px 1px 0px #00000029, 0px 16px 40px -12px #00000080;
 }
 
 @theme inline {
@@ -158,6 +180,10 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-text-quaternary: var(--text-quaternary);
+
+  /* Available as border-translucent / border-translucent-strong. */
+  --color-border-translucent: var(--border-translucent);
+  --color-border-translucent-strong: var(--border-translucent-strong);
 
   --font-sans: "Inter Variable", "SF Pro Display", -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
@@ -222,11 +248,6 @@
   --radius-lg: 8px;
   --radius-xl: 12px;
   --radius-2xl: 16px;
-
-  --shadow-tiny: var(--shadow-tiny);
-  --shadow-low: var(--shadow-low);
-  --shadow-medium: var(--shadow-medium);
-  --shadow-high: var(--shadow-high);
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -266,6 +287,16 @@
 }
 
 @layer base {
+  /* Sub-pixel borders are spec'd, not a hack: CSS Values 4 "snap a length as
+     a line width" rounds up only *below* one device pixel, so 0.5px renders
+     as a true half-pixel line on a 2x display. It is what stops a 1px border
+     looking like a drawn line and makes it read as an edge. */
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    :root {
+      --border-hairline: 0.5px;
+    }
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -312,6 +343,55 @@
   ::selection {
     background-color: color-mix(in oklab, var(--color-foreground) 16%, transparent);
   }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Surfaces.
+   
+   What makes Linear's boxes read as physical is not a drop shadow — it is a
+   lit edge. Three things stacked, and the order matters:
+   
+     1. A hairline border in translucent white/black rather than a solid grey.
+        Because it composites over whatever is behind it, one token works at
+        every surface depth instead of needing a new grey per background.
+   
+     2. A flat scrim over the surface (`--surface-tint`) that lifts it one
+        step above the page. Linear writes this as
+        `linear-gradient(#ffffff05, #ffffff05)` — both stops identical, which
+        is not a gradient at all, just the only way to stack a translucent
+        tint over an opaque colour.
+   
+     3. An inset hairline along the top inner edge, and a darker one along the
+        bottom. This is the "velvet" — an inset box-shadow is clipped to the
+        padding box, so it follows border-radius and tapers to nothing at the
+        3- and 9-o'clock points all by itself. No masking required.
+   
+   Drop shadows are deliberately near-absent. On a grey UI a blur reads as
+   smudge; the edge does the lifting instead.
+   ───────────────────────────────────────────────────────────────────────── */
+@utility surface {
+  border: var(--border-hairline) solid var(--color-border-translucent-strong);
+  background-image: linear-gradient(var(--surface-tint), var(--surface-tint));
+  box-shadow:
+    inset 0 var(--border-hairline) 0 var(--edge-highlight),
+    inset 0 calc(-1 * var(--border-hairline)) 0 var(--edge-shade);
+}
+
+/* A surface that only wants the border, e.g. rows inside an already-lifted
+   panel, where a second lit edge would read as double-walled. */
+@utility surface-flat {
+  border: var(--border-hairline) solid var(--color-border-translucent-strong);
+  background-image: linear-gradient(var(--surface-tint), var(--surface-tint));
+}
+
+/* The one place a real shadow earns its keep: an element genuinely floating
+   over the page, where the edge alone cannot signal separation. */
+@utility surface-overlay {
+  border: var(--border-hairline) solid var(--color-border-translucent-strong);
+  background-image: linear-gradient(var(--surface-tint), var(--surface-tint));
+  box-shadow:
+    inset 0 var(--border-hairline) 0 var(--edge-highlight),
+    var(--shadow-overlay);
 }
 
 /* ── Texts reveal — staggered blurred rise for stacked lines ───────────── */

@@ -53,7 +53,7 @@ export function GatewayDiagram({ apps, endpoint, className }: GatewayDiagramProp
         {CLIENTS.map((client) => (
           <li
             key={client}
-            className="theme-surface rounded-full border px-3 py-1.5 text-center font-mono text-[11px] text-muted-foreground"
+            className="theme-surface surface-flat rounded-full px-3 py-1.5 text-center font-mono text-[11px] text-muted-foreground"
           >
             {client}
           </li>
@@ -63,7 +63,7 @@ export function GatewayDiagram({ apps, endpoint, className }: GatewayDiagramProp
       <Connector side="left" count={CLIENTS.length} />
 
       {/* ── The gateway ───────────────────────────────────────────────── */}
-      <div className="theme-surface flex shrink-0 flex-col items-center justify-center gap-1 self-center rounded-2xl border px-5 py-6 shadow-sm">
+      <div className="theme-surface surface flex shrink-0 flex-col items-center justify-center gap-1 self-center rounded-2xl px-5 py-6">
         <span className="text-sm font-semibold tracking-tight">sirup.gg</span>
         <span className="max-w-[13ch] text-center font-mono text-[10px] leading-relaxed text-muted-foreground">
           {host}

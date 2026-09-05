@@ -13,11 +13,11 @@ const buttonVariants = cva(
       variant: {
         // The inverted chip: dark on light, light on dark.
         default:
-          "bg-primary text-primary-foreground shadow-[var(--shadow-tiny)] hover:opacity-90",
+          "bg-primary text-primary-foreground shadow-[inset_0_var(--border-hairline)_0_#ffffff26] hover:opacity-90",
         destructive:
           "bg-destructive text-destructive-foreground hover:opacity-90 focus-visible:ring-ring/40",
         outline:
-          "border bg-background shadow-[var(--shadow-tiny)] hover:bg-accent hover:text-accent-foreground",
+          "surface-flat bg-background hover:bg-accent hover:text-accent-foreground",
         secondary: "bg-secondary text-secondary-foreground hover:bg-accent",
         ghost:
           "text-text-secondary hover:bg-accent hover:text-accent-foreground",

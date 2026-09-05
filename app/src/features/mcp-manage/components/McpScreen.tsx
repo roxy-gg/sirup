@@ -126,7 +126,7 @@ export function McpScreen() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8">
       {/* ── Hero: the pitch, plus the credentials you need ─────────────── */}
-      <section className="theme-surface flex flex-col gap-6 rounded-2xl border bg-card p-6">
+      <section className="theme-surface surface flex flex-col gap-6 rounded-2xl bg-card p-6">
         <div className="flex flex-col gap-1">
           <h1 className="text-xl font-semibold tracking-tight">
             One endpoint for every app your agents use

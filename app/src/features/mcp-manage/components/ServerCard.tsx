@@ -36,7 +36,7 @@ export function ServerCard({
   return (
     <Card
       className={cn(
-        "theme-surface transition-opacity duration-[var(--duration-fast)]",
+        "theme-surface surface transition-opacity duration-[var(--duration-fast)]",
         isBusy && "opacity-60",
       )}
     >
